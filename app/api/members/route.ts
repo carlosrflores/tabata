@@ -35,6 +35,10 @@ export async function POST(req: NextRequest) {
     const cleanInitials = initials.toUpperCase().slice(0, 2)
 
     // Insert member record
+    const { count: existingCount } = await supabaseAdmin
+      .from('members')
+      .select('*', { count: 'exact', head: true })
+    const isFirstMember = (existingCount ?? 0) === 0
     const { data: member, error: memberErr } = await supabaseAdmin
       .from('members')
       .insert({
