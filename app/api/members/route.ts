@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { authenticatePeloton } from '@/lib/peloton'
 
 export async function POST(req: NextRequest) {
-  // Protect this endpoint with the admin secret
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,25 +19,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Verify Peloton credentials actually work before storing
     const session = await authenticatePeloton(peloton_username, peloton_password)
 
-    // Check we got a valid user ID back
     if (!session.userId) {
       return NextResponse.json(
-        { error: 'Peloton login succeeded but no user ID returned — check username' },
+        { error: 'Peloton login succeeded but no user ID returned' },
         { status: 400 }
       )
     }
 
-    // Generate initials if not provided cleanly
     const cleanInitials = initials.toUpperCase().slice(0, 2)
 
-    // Insert member record
     const { count: existingCount } = await supabaseAdmin
       .from('members')
       .select('*', { count: 'exact', head: true })
+
     const isFirstMember = (existingCount ?? 0) === 0
+
     const { data: member, error: memberErr } = await supabaseAdmin
       .from('members')
       .insert({
@@ -62,7 +59,10 @@ export async function POST(req: NextRequest) {
       throw memberErr
     }
 
-    // Store password (plaintext for now — future: encrypt with Supabase Vault)
+    if (!member) {
+      throw new Error('Member insert returned no data')
+    }
+
     const { error: credsErr } = await supabaseAdmin
       .from('member_credentials')
       .insert({
@@ -84,20 +84,16 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-
-    // Peloton auth failure is a user error, not a server error
     if (message.includes('auth failed')) {
       return NextResponse.json(
-        { error: 'Peloton login failed — double-check the username and password' },
+        { error: 'Peloton login failed — check username and password' },
         { status: 400 }
       )
     }
-
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
-// GET: list all members and their sync status
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -106,15 +102,11 @@ export async function GET(req: NextRequest) {
 
   const { data: members, error } = await supabaseAdmin
     .from('members')
-    .select(`
-      id, name, initials, peloton_username, is_owner, active, created_at,
-      workouts(count)
-    `)
+    .select('id, name, initials, peloton_username, is_owner, active, created_at')
     .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Get last sync time per member
   const { data: syncLogs } = await supabaseAdmin
     .from('sync_log')
     .select('member_id, completed_at, status, workouts_added')
@@ -127,10 +119,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const { data: workoutCounts } = await supabaseAdmin
+    .from('workouts')
+    .select('member_id')
+
+  const countMap: Record<string, number> = {}
+  for (const w of workoutCounts ?? []) {
+    countMap[w.member_id] = (countMap[w.member_id] ?? 0) + 1
+  }
+
   return NextResponse.json({
     members: (members ?? []).map((m) => ({
       ...m,
-      workout_count: (m.workouts as unknown as { count: number }[])?.[0]?.count ?? 0,
+      workout_count: countMap[m.id] ?? 0,
       last_sync: lastSync[m.id] ?? null,
     })),
   })
