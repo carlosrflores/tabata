@@ -62,12 +62,12 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
 
   const { data: creds, error: credsErr } = await db
     .from('member_credentials')
-    .select('peloton_password_encrypted')
+    .select('peloton_bearer_token')
     .eq('member_id', memberId)
     .single()
 
-  if (credsErr || !creds) {
-    return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No credentials stored' }
+  if (credsErr || !creds?.peloton_bearer_token) {
+    return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No bearer token stored' }
   }
 
   const { data: logEntry } = await db
@@ -79,10 +79,7 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
   const logId = logEntry?.id
 
   try {
-    const session = await authenticatePeloton(
-      member.peloton_username,
-      creds.peloton_password_encrypted
-    )
+    const session = await authenticatePeloton(creds.peloton_bearer_token)
 
     const { data: existingWorkouts } = await db
       .from('workouts')

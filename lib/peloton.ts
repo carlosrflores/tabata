@@ -6,45 +6,37 @@ import type {
 const PELOTON_BASE = 'https://api.onepeloton.com'
 
 interface PelotonSession {
-  cookie: string
+  token: string
   userId: string
 }
 
-// Authenticate with Peloton and return a session cookie
-// This mirrors the approach from Al Chen's original scripts
+// Validate a bearer token by calling /api/me and return the user ID
+// Peloton's /auth/login endpoint was shut down in October 2025;
+// users must now supply a bearer token from their browser session.
 export async function authenticatePeloton(
-  username: string,
-  password: string
+  bearerToken: string
 ): Promise<PelotonSession> {
-  const res = await fetch(`${PELOTON_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username_or_email: username,
-      password,
-    }),
+  const token = bearerToken.startsWith('Bearer ')
+    ? bearerToken.slice(7)
+    : bearerToken
+
+  const res = await fetch(`${PELOTON_BASE}/api/me`, {
+    headers: { Authorization: `Bearer ${token}` },
   })
 
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`Peloton auth failed (${res.status}): ${text}`)
+    throw new Error(`Peloton token validation failed (${res.status}): ${text}`)
   }
-
-  // Extract and clean the session cookie from response headers
-  // Peloton returns multiple Set-Cookie headers; we need just the values
-  const rawCookies = res.headers.getSetCookie?.() ?? []
-  const cookie = rawCookies
-    .map((c) => c.split(';')[0])
-    .join('; ')
 
   const data = await res.json()
-  const userId: string = data.user_id
+  const userId: string = data.id
 
-  if (!cookie || !userId) {
-    throw new Error('Peloton auth response missing cookie or user_id')
+  if (!userId) {
+    throw new Error('Peloton /api/me response missing user id')
   }
 
-  return { cookie, userId }
+  return { token, userId }
 }
 
 // Fetch a page of workouts for a user
@@ -57,7 +49,7 @@ export async function fetchWorkoutList(
   const url = `${PELOTON_BASE}/api/user/${session.userId}/workouts?joins=ride,ride.instructor&limit=${limit}&page=${page}&sort_by=-created`
 
   const res = await fetch(url, {
-    headers: { Cookie: session.cookie },
+    headers: { Authorization: `Bearer ${session.token}` },
   })
 
   if (!res.ok) {
@@ -78,7 +70,7 @@ export async function fetchWorkoutSummary(
 ): Promise<PelotonWorkoutSummary> {
   const res = await fetch(
     `${PELOTON_BASE}/api/workout/${workoutId}?joins=ride,ride.instructor`,
-    { headers: { Cookie: session.cookie } }
+    { headers: { Authorization: `Bearer ${session.token}` } }
   )
 
   if (!res.ok) {
@@ -95,7 +87,7 @@ export async function fetchWorkoutPerformance(
 ): Promise<PelotonWorkoutPerformance> {
   const res = await fetch(
     `${PELOTON_BASE}/api/workout/${workoutId}/performance_graph?every_n=5`,
-    { headers: { Cookie: session.cookie } }
+    { headers: { Authorization: `Bearer ${session.token}` } }
   )
 
   if (!res.ok) {

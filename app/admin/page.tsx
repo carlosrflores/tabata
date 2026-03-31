@@ -23,7 +23,7 @@ export default function AdminPage() {
     name: '',
     initials: '',
     peloton_username: '',
-    peloton_password: '',
+    peloton_bearer_token: '',
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
@@ -76,7 +76,7 @@ export default function AdminPage() {
       setFormError(data.error)
     } else {
       setFormSuccess(`${form.name} added successfully. Trigger a sync to pull their history.`)
-      setForm({ name: '', initials: '', peloton_username: '', peloton_password: '' })
+      setForm({ name: '', initials: '', peloton_username: '', peloton_bearer_token: '' })
       loadMembers()
     }
 
@@ -164,8 +164,7 @@ export default function AdminPage() {
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
         <h2 className="text-sm font-medium text-gray-900 mb-1">Add a member</h2>
         <p className="text-xs text-gray-400 mb-4">
-          Their Peloton login is verified before being saved. Passwords are stored
-          securely in Supabase.
+          Their Peloton bearer token is verified before being saved.
         </p>
 
         {formError && (
@@ -219,18 +218,30 @@ export default function AdminPage() {
 
           <div>
             <label className="block text-xs text-gray-400 mb-1">
-              Peloton password
-              <span className="ml-1 text-gray-300">(their actual password)</span>
+              Peloton bearer token
             </label>
             <input
               required
               type="password"
-              value={form.peloton_password}
+              value={form.peloton_bearer_token}
               onChange={(e) =>
-                setForm((f) => ({ ...f, peloton_password: e.target.value }))
+                setForm((f) => ({ ...f, peloton_bearer_token: e.target.value }))
               }
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+              placeholder="eyJhbGciOi..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
             />
+            <details className="mt-2">
+              <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
+                How to get the bearer token
+              </summary>
+              <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
+                <li>Log in to <strong>onepeloton.com</strong> in your browser</li>
+                <li>Open DevTools (F12) and go to the <strong>Network</strong> tab</li>
+                <li>Reload the page or navigate to any section</li>
+                <li>Click any request to <strong>api.onepeloton.com</strong></li>
+                <li>In the request headers, find <strong>Authorization</strong> and copy its value</li>
+              </ol>
+            </details>
           </div>
 
           <button
@@ -238,7 +249,7 @@ export default function AdminPage() {
             disabled={submitting}
             className="w-full bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
           >
-            {submitting ? 'Verifying with Peloton...' : 'Add member'}
+            {submitting ? 'Verifying token with Peloton...' : 'Add member'}
           </button>
         </form>
       </div>

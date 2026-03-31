@@ -10,15 +10,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const body = await req.json()
-  const { name, initials, peloton_username, peloton_password } = body
-  if (!name || !initials || !peloton_username || !peloton_password) {
+  const { name, initials, peloton_username, peloton_bearer_token } = body
+  if (!name || !initials || !peloton_username || !peloton_bearer_token) {
     return NextResponse.json({ error: 'All fields required' }, { status: 400 })
   }
   try {
     const db = getSupabaseAdmin()
-    const session = await authenticatePeloton(peloton_username, peloton_password)
+    const session = await authenticatePeloton(peloton_bearer_token)
     if (!session.userId) {
-      return NextResponse.json({ error: 'Peloton login succeeded but no user ID returned' }, { status: 400 })
+      return NextResponse.json({ error: 'Bearer token is valid but no user ID returned' }, { status: 400 })
     }
     const cleanInitials = initials.toUpperCase().slice(0, 2)
     const { count: existingCount } = await db.from('members').select('*', { count: 'exact', head: true })
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
     if (!member) throw new Error('Member insert returned no data')
     const { error: credsErr } = await db.from('member_credentials').insert({
-      member_id: member.id, peloton_password_encrypted: peloton_password,
+      member_id: member.id, peloton_bearer_token: session.token,
     })
     if (credsErr) throw credsErr
     return NextResponse.json({ success: true, member: { id: member.id, name: member.name }, message: `${name} added.` })
