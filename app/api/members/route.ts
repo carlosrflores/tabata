@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { authenticatePeloton } from '@/lib/peloton'
 
 export async function POST(req: NextRequest) {
@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const db = getSupabaseAdmin()
     const session = await authenticatePeloton(peloton_username, peloton_password)
 
     if (!session.userId) {
@@ -30,13 +31,13 @@ export async function POST(req: NextRequest) {
 
     const cleanInitials = initials.toUpperCase().slice(0, 2)
 
-    const { count: existingCount } = await supabaseAdmin
+    const { count: existingCount } = await db
       .from('members')
       .select('*', { count: 'exact', head: true })
 
     const isFirstMember = (existingCount ?? 0) === 0
 
-    const { data: member, error: memberErr } = await supabaseAdmin
+    const { data: member, error: memberErr } = await db
       .from('members')
       .insert({
         name,
@@ -59,11 +60,9 @@ export async function POST(req: NextRequest) {
       throw memberErr
     }
 
-    if (!member) {
-      throw new Error('Member insert returned no data')
-    }
+    if (!member) throw new Error('Member insert returned no data')
 
-    const { error: credsErr } = await supabaseAdmin
+    const { error: credsErr } = await db
       .from('member_credentials')
       .insert({
         member_id: member.id,
@@ -100,28 +99,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: members, error } = await supabaseAdmin
+  const db = getSupabaseAdmin()
+
+  const { data: members, error } = await db
     .from('members')
     .select('id, name, initials, peloton_username, is_owner, active, created_at')
     .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const { data: syncLogs } = await supabaseAdmin
+  const { data: syncLogs } = await db
     .from('sync_log')
     .select('member_id, completed_at, status, workouts_added')
     .order('completed_at', { ascending: false })
 
   const lastSync: Record<string, { completed_at: string; status: string }> = {}
   for (const log of syncLogs ?? []) {
-    if (!lastSync[log.member_id]) {
-      lastSync[log.member_id] = log
-    }
+    if (!lastSync[log.member_id]) lastSync[log.member_id] = log
   }
 
-  const { data: workoutCounts } = await supabaseAdmin
-    .from('workouts')
-    .select('member_id')
+  const { data: workoutCounts } = await db.from('workouts').select('member_id')
 
   const countMap: Record<string, number> = {}
   for (const w of workoutCounts ?? []) {

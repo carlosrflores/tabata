@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import {
   authenticatePeloton,
   fetchNewWorkouts,
@@ -15,7 +15,6 @@ interface SyncResult {
   error?: string
 }
 
-// Transform a raw Peloton workout + performance into a DB-ready row
 function transformWorkout(
   memberId: string,
   summary: PelotonWorkoutSummary,
@@ -48,10 +47,10 @@ function transformWorkout(
   }
 }
 
-// Sync a single member's workouts from Peloton to Supabase
 export async function syncMember(memberId: string): Promise<SyncResult> {
-  // Get member info + credentials
-  const { data: member, error: memberErr } = await supabaseAdmin
+  const db = getSupabaseAdmin()
+
+  const { data: member, error: memberErr } = await db
     .from('members')
     .select('id, name, peloton_username, peloton_user_id')
     .eq('id', memberId)
@@ -61,23 +60,17 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     return { memberId, memberName: 'Unknown', workoutsAdded: 0, error: 'Member not found' }
   }
 
-  const { data: creds, error: credsErr } = await supabaseAdmin
+  const { data: creds, error: credsErr } = await db
     .from('member_credentials')
     .select('peloton_password_encrypted')
     .eq('member_id', memberId)
     .single()
 
   if (credsErr || !creds) {
-    return {
-      memberId,
-      memberName: member.name,
-      workoutsAdded: 0,
-      error: 'No credentials stored',
-    }
+    return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No credentials stored' }
   }
 
-  // Create a sync log entry
-  const { data: logEntry } = await supabaseAdmin
+  const { data: logEntry } = await db
     .from('sync_log')
     .insert({ member_id: memberId, status: 'running' })
     .select()
@@ -86,111 +79,67 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
   const logId = logEntry?.id
 
   try {
-    // Authenticate with Peloton
     const session = await authenticatePeloton(
       member.peloton_username,
-      creds.peloton_password_encrypted // In production, decrypt this first
+      creds.peloton_password_encrypted
     )
 
-    // Get existing workout IDs from DB to avoid duplicates
-    const { data: existingWorkouts } = await supabaseAdmin
+    const { data: existingWorkouts } = await db
       .from('workouts')
       .select('peloton_workout_id')
       .eq('member_id', memberId)
 
-    const knownIds = new Set(
-      (existingWorkouts ?? []).map((w) => w.peloton_workout_id)
-    )
+    const knownIds = new Set((existingWorkouts ?? []).map((w) => w.peloton_workout_id))
 
-    // Fetch only new workouts from Peloton
     const newWorkouts = await fetchNewWorkouts(session, knownIds)
 
     if (newWorkouts.length === 0) {
-      await supabaseAdmin
-        .from('sync_log')
-        .update({ status: 'success', completed_at: new Date().toISOString(), workouts_added: 0 })
-        .eq('id', logId)
-
+      await db.from('sync_log').update({ status: 'success', completed_at: new Date().toISOString(), workouts_added: 0 }).eq('id', logId)
       return { memberId, memberName: member.name, workoutsAdded: 0 }
     }
 
-    // For each new workout, fetch detailed stats and insert
     const rows = []
     for (const workout of newWorkouts) {
       try {
-        // Fetch the detailed summary (has leaderboard rank)
         const summary = await fetchWorkoutSummary(session, workout.id)
-
-        // Fetch performance graph (has avg cadence, resistance, etc.)
-        // Only do this for cycling - other disciplines may not have it
         let perf: PelotonWorkoutPerformance = { duration: 0, avg_summaries: [], summaries: [] }
         if (workout.fitness_discipline === 'cycling') {
           perf = await fetchWorkoutPerformance(session, workout.id)
         }
-
         rows.push(transformWorkout(memberId, summary, perf))
-
-        // Courtesy delay between individual workout fetches
         await new Promise((r) => setTimeout(r, 200))
       } catch (e) {
-        // Log but don't fail the whole sync for one bad workout
         console.error(`Failed to process workout ${workout.id}:`, e)
       }
     }
 
-    // Batch upsert to Supabase (upsert handles any edge-case duplicates)
     if (rows.length > 0) {
-      const { error: insertErr } = await supabaseAdmin
+      const { error: insertErr } = await db
         .from('workouts')
         .upsert(rows, { onConflict: 'peloton_workout_id' })
-
       if (insertErr) throw insertErr
     }
 
-    // Update sync log
-    await supabaseAdmin
-      .from('sync_log')
-      .update({
-        status: 'success',
-        completed_at: new Date().toISOString(),
-        workouts_added: rows.length,
-      })
-      .eq('id', logId)
+    await db.from('sync_log').update({ status: 'success', completed_at: new Date().toISOString(), workouts_added: rows.length }).eq('id', logId)
 
     return { memberId, memberName: member.name, workoutsAdded: rows.length }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-
-    await supabaseAdmin
-      .from('sync_log')
-      .update({
-        status: 'error',
-        completed_at: new Date().toISOString(),
-        error_message: message,
-      })
-      .eq('id', logId)
-
+    await db.from('sync_log').update({ status: 'error', completed_at: new Date().toISOString(), error_message: message }).eq('id', logId)
     return { memberId, memberName: member.name, workoutsAdded: 0, error: message }
   }
 }
 
-// Sync all active members - called by the daily cron
 export async function syncAllMembers(): Promise<SyncResult[]> {
-  const { data: members, error } = await supabaseAdmin
-    .from('members')
-    .select('id')
-    .eq('active', true)
-
+  const db = getSupabaseAdmin()
+  const { data: members, error } = await db.from('members').select('id').eq('active', true)
   if (error || !members) return []
 
   const results: SyncResult[] = []
-
   for (const member of members) {
     const result = await syncMember(member.id)
     results.push(result)
-    // Small delay between members to be respectful to Peloton's API
     await new Promise((r) => setTimeout(r, 1000))
   }
-
   return results
 }
