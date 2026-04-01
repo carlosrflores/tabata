@@ -10,22 +10,41 @@ interface PelotonSession {
   userId: string
 }
 
-// Validate a bearer token by calling /api/me and return the user ID
-// Peloton's /auth/login endpoint was shut down in October 2025;
-// users must now supply a bearer token from their browser session.
+// Build the headers Peloton's API expects.
+// Since Oct 2025, Peloton uses Auth0 OAuth — all API calls require
+// an OAuth access token (not the old session cookie).
+function pelotonHeaders(token: string): Record<string, string> {
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Peloton-Platform': 'web',
+    'Accept': 'application/json',
+  }
+}
+
+// Validate an OAuth access token by calling /api/me and return the user ID.
+// Peloton's /auth/login was shut down Oct 2025; tokens now come from
+// the Auth0 PKCE flow at auth.onepeloton.com (or from browser DevTools).
+// Tokens expire every ~48 hours.
 export async function authenticatePeloton(
   bearerToken: string
 ): Promise<PelotonSession> {
+  // Accept either "Bearer xxx" or raw "xxx"
   const token = bearerToken.startsWith('Bearer ')
     ? bearerToken.slice(7)
     : bearerToken
 
   const res = await fetch(`${PELOTON_BASE}/api/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: pelotonHeaders(token),
   })
 
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 401) {
+      throw new Error(
+        'Peloton token rejected (401). The token may be expired — they last ~48 hours. ' +
+        'Log into onepeloton.com and copy a fresh token from DevTools.'
+      )
+    }
     throw new Error(`Peloton token validation failed (${res.status}): ${text}`)
   }
 
@@ -49,7 +68,7 @@ export async function fetchWorkoutList(
   const url = `${PELOTON_BASE}/api/user/${session.userId}/workouts?joins=ride,ride.instructor&limit=${limit}&page=${page}&sort_by=-created`
 
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${session.token}` },
+    headers: pelotonHeaders(session.token),
   })
 
   if (!res.ok) {
@@ -70,7 +89,7 @@ export async function fetchWorkoutSummary(
 ): Promise<PelotonWorkoutSummary> {
   const res = await fetch(
     `${PELOTON_BASE}/api/workout/${workoutId}?joins=ride,ride.instructor`,
-    { headers: { Authorization: `Bearer ${session.token}` } }
+    { headers: pelotonHeaders(session.token) }
   )
 
   if (!res.ok) {
@@ -87,7 +106,7 @@ export async function fetchWorkoutPerformance(
 ): Promise<PelotonWorkoutPerformance> {
   const res = await fetch(
     `${PELOTON_BASE}/api/workout/${workoutId}/performance_graph?every_n=5`,
-    { headers: { Authorization: `Bearer ${session.token}` } }
+    { headers: pelotonHeaders(session.token) }
   )
 
   if (!res.ok) {

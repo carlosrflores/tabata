@@ -235,12 +235,17 @@ export default function AdminPage() {
                 How to get the bearer token
               </summary>
               <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
-                <li>Log in to <strong>onepeloton.com</strong> in your browser</li>
+                <li>Log in to <strong>members.onepeloton.com</strong> in your browser</li>
                 <li>Open DevTools (F12) and go to the <strong>Network</strong> tab</li>
-                <li>Reload the page or navigate to any section</li>
+                <li>Reload the page or click around (e.g. view a class)</li>
                 <li>Click any request to <strong>api.onepeloton.com</strong></li>
-                <li>In the request headers, find <strong>Authorization</strong> and copy its value</li>
+                <li>Under <strong>Request Headers</strong>, find the <strong>Authorization</strong> header</li>
+                <li>Copy the value — it starts with <code className="bg-gray-100 px-1 rounded">Bearer eyJ...</code></li>
               </ol>
+              <p className="mt-2 text-xs text-amber-600">
+                Tokens expire every ~48 hours. If syncs start failing, a member
+                will need to paste a fresh token.
+              </p>
             </details>
           </div>
 
