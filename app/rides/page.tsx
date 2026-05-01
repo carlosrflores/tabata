@@ -11,6 +11,7 @@ import {
   formatNumber,
 } from '@/lib/format';
 import type { RidePopularityRow } from '@/types';
+import ShareButton from './ShareButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,44 +57,54 @@ export default async function RidesIndexPage() {
       ) : (
         <div className="space-y-2">
           {rides.map((r) => (
-            <Link
+            <div
               key={r.ride_id}
-              href={`/rides/${r.ride_id}`}
-              className="flex gap-3 bg-white rounded-2xl border border-gray-100 p-4 hover:border-purple-200 transition-colors"
+              className="relative bg-white rounded-2xl border border-gray-100 hover:border-purple-200 transition-colors"
             >
-              {r.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={r.image_url}
-                  alt=""
-                  className="h-16 w-24 flex-shrink-0 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="h-16 w-24 flex-shrink-0 rounded-lg bg-purple-50" />
-              )}
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-medium text-gray-900 truncate">
-                  {r.title ?? 'Untitled ride'}
-                </h3>
-                <p className="text-xs text-gray-400 truncate">
-                  {r.instructor_name ?? 'Unknown'} ·{' '}
-                  {formatDuration(r.duration_seconds)}
-                </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                  <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">
-                    {r.group_member_count}{' '}
-                    {r.group_member_count === 1 ? 'member' : 'members'}
-                  </span>
-                  <span className="text-gray-400">
-                    Best {formatNumber(r.group_best_output_kj)} kj
-                  </span>
-                  <span className="text-gray-300">·</span>
-                  <span className="text-gray-400">
-                    {formatRelativeDate(r.most_recent_attempt)}
-                  </span>
+              <Link
+                href={`/rides/${r.ride_id}`}
+                className="flex gap-3 p-4 pr-14"
+              >
+                {r.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.image_url}
+                    alt=""
+                    className="h-16 w-24 flex-shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-24 flex-shrink-0 rounded-lg bg-purple-50" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-medium text-gray-900 truncate">
+                    {r.title ?? 'Untitled ride'}
+                  </h3>
+                  <p className="text-xs text-gray-400 truncate">
+                    {r.instructor_name ?? 'Unknown'} ·{' '}
+                    {formatDuration(r.duration_seconds)}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                    <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">
+                      {r.group_member_count}{' '}
+                      {r.group_member_count === 1 ? 'member' : 'members'}
+                    </span>
+                    <span className="text-gray-400">
+                      Best {formatNumber(r.group_best_output_kj)} kj
+                    </span>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-gray-400">
+                      {formatRelativeDate(r.most_recent_attempt)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              <ShareButton
+                rideId={r.ride_id}
+                title={r.title ?? 'Untitled ride'}
+                instructor={r.instructor_name}
+                className="absolute top-3 right-3"
+              />
+            </div>
           ))}
         </div>
       )}
