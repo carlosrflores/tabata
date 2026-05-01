@@ -1,6 +1,7 @@
 import type {
   PelotonWorkoutSummary,
   PelotonWorkoutPerformance,
+  PelotonRide,
 } from '@/types'
 
 const PELOTON_BASE = 'https://api.onepeloton.com'
@@ -129,6 +130,32 @@ export function extractAvgMetric(
     (s) => s.display_name.toLowerCase() === name.toLowerCase()
   )
   return metric?.value ?? null
+}
+
+// Fetch full metadata for a single ride (class).
+// Used by the sync job to populate the `rides` table.
+//
+// Field-mapping notes (inferred from the `Ride` DB schema; verify against a
+// real response if any column is unexpectedly null):
+//   - difficulty_estimate    → ride.difficulty_estimate (crowdsourced 1–10)
+//   - overall_rating_avg     → ride.overall_rating_avg
+//   - original_air_time      → ride.original_air_time (unix seconds → ISO)
+//   - instructor_name        → ride.instructor.name (joined via ?joins=instructor)
+//   - instructor_image_url   → ride.instructor.image_url
+export async function fetchRide(
+  session: PelotonSession,
+  rideId: string
+): Promise<PelotonRide> {
+  const res = await fetch(
+    `${PELOTON_BASE}/api/ride/${rideId}?joins=instructor`,
+    { headers: pelotonHeaders(session.token) }
+  )
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ride ${rideId} (${res.status})`)
+  }
+
+  return res.json()
 }
 
 // Fetch all NEW workouts for a user (stops when it hits known IDs)

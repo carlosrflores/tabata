@@ -75,6 +75,7 @@ export interface PelotonWorkoutSummary {
   leaderboard_rank: number | null
   total_leaderboard_users: number | null
   ride?: {
+    id: string
     title: string
     difficulty_rating_avg: number | null
     instructor?: {
@@ -83,6 +84,29 @@ export interface PelotonWorkoutSummary {
     duration: number
   }
   metrics_type: string
+}
+
+// Raw shape of Peloton's /api/ride/{id}?joins=instructor response.
+// Field names inferred from the `Ride` schema below; verify by inspecting
+// a real response if any of these end up null when they shouldn't be.
+export interface PelotonRide {
+  id: string
+  title?: string | null
+  description?: string | null
+  duration?: number | null
+  fitness_discipline?: string | null
+  difficulty_estimate?: number | null
+  overall_rating_avg?: number | null
+  total_workouts?: number | null
+  total_ratings?: number | null
+  image_url?: string | null
+  original_air_time?: number | null   // unix seconds
+  has_pedaling_metrics?: boolean
+  is_explicit?: boolean
+  instructor?: {
+    name?: string | null
+    image_url?: string | null
+  } | null
 }
 
 export interface PelotonWorkoutPerformance {
