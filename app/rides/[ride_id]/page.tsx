@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { formatDuration, formatExactDate } from '@/lib/format';
 import RideDetailClient from './RideDetailClient';
+import ShareButton from './ShareButton';
 import type {
   Ride,
   RideComparisonRow,
@@ -52,7 +53,13 @@ export default async function RideDetailPage({ params }: Props) {
       </div>
 
       {/* Class header — identical for every member */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+      <div className="relative bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+        <ShareButton
+          rideId={ride.id}
+          title={ride.title ?? 'Untitled ride'}
+          instructor={ride.instructor_name}
+          className="absolute top-3 right-3"
+        />
         <div className="flex flex-col gap-4 sm:flex-row">
           {ride.image_url && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -62,7 +69,7 @@ export default async function RideDetailPage({ params }: Props) {
               className="h-32 w-full sm:w-48 flex-shrink-0 rounded-xl object-cover"
             />
           )}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 pr-10">
             <div className="text-xs uppercase tracking-wide text-gray-400">
               {ride.fitness_discipline ?? 'Workout'} ·{' '}
               {formatDuration(ride.duration_seconds)}
