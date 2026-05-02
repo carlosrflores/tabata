@@ -16,6 +16,18 @@ interface LeaderboardData {
   }
 }
 
+const RANK_RING: Record<number, string> = {
+  1: 'ring-purple-300 bg-purple-100 text-purple-800',
+  2: 'ring-gray-300 bg-gray-100 text-gray-700',
+  3: 'ring-amber-300 bg-amber-100 text-amber-800',
+}
+
+const RANK_TEXT: Record<number, string> = {
+  1: 'text-purple-600',
+  2: 'text-gray-500',
+  3: 'text-amber-600',
+}
+
 function Avatar({
   initials,
   rank,
@@ -25,22 +37,15 @@ function Avatar({
   rank: number
   size?: 'sm' | 'md' | 'lg'
 }) {
-  const colors: Record<number, string> = {
-    1: 'bg-purple-100 text-purple-800 ring-purple-400',
-    2: 'bg-gray-200 text-gray-700 ring-gray-400',
-    3: 'bg-orange-100 text-orange-800 ring-orange-400',
-  }
-  const colorClass = colors[rank] ?? 'bg-gray-100 text-gray-600 ring-gray-200'
-
   const sizeClass = {
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base',
+    sm: 'h-9 w-9 text-xs',
+    md: 'h-11 w-11 text-sm',
+    lg: 'h-14 w-14 text-base',
   }[size]
-
+  const ring = RANK_RING[rank] ?? 'ring-gray-200 bg-white text-gray-600'
   return (
     <div
-      className={`${sizeClass} ${colorClass} rounded-full ring-2 flex items-center justify-center font-medium flex-shrink-0`}
+      className={`${sizeClass} ${ring} flex flex-shrink-0 items-center justify-center rounded-full font-medium ring-2`}
     >
       {initials}
     </div>
@@ -49,46 +54,53 @@ function Avatar({
 
 function Podium({ entries }: { entries: LeaderboardEntry[] }) {
   if (entries.length < 3) return null
-  const [second, first, third] = [entries[1], entries[0], entries[2]]
-
-  const heights = { first: 'h-20', second: 'h-14', third: 'h-10' }
-  const blockColors = {
-    first: 'bg-purple-400',
-    second: 'bg-gray-400',
-    third: 'bg-orange-400',
-  }
+  const [first, second, third] = entries
 
   function PodiumSlot({
     entry,
-    position,
     rank,
   }: {
     entry: LeaderboardEntry
-    position: 'first' | 'second' | 'third'
-    rank: number
+    rank: 1 | 2 | 3
   }) {
+    const heights = { 1: 'h-24', 2: 'h-16', 3: 'h-10' }[rank]
+    const block = {
+      1: 'bg-gradient-to-t from-purple-500 to-purple-300',
+      2: 'bg-gradient-to-t from-gray-400 to-gray-300',
+      3: 'bg-gradient-to-t from-amber-500 to-amber-300',
+    }[rank]
+    const order = { 1: 'order-2', 2: 'order-1', 3: 'order-3' }[rank]
     return (
-      <div className="flex flex-col items-center flex-1">
-        <div className="text-xs text-gray-400 mb-1">
+      <div className={`${order} flex flex-1 flex-col items-center`}>
+        <span className={`mb-1 text-[10px] font-medium uppercase tracking-wider ${RANK_TEXT[rank]}`}>
           {rank === 1 ? '1st' : rank === 2 ? '2nd' : '3rd'}
-        </div>
-        <Avatar initials={entry.initials} rank={rank} size={rank === 1 ? 'lg' : 'md'} />
-        <div className="text-xs font-medium text-gray-800 mt-1 text-center leading-tight">
-          {entry.name.split(' ')[0]}
-        </div>
-        <div className="text-xs text-gray-400">{Math.round(entry.total_output_kj)} kj</div>
-        <div
-          className={`${heights[position]} ${blockColors[position]} w-full mt-2 rounded-t-md`}
-        />
+        </span>
+        <Link
+          href={`/member/${entry.member_id}`}
+          className="group flex flex-col items-center"
+        >
+          <Avatar
+            initials={entry.initials}
+            rank={rank}
+            size={rank === 1 ? 'lg' : 'md'}
+          />
+          <div className="mt-1.5 text-center text-xs font-medium text-gray-800 leading-tight group-hover:text-purple-700">
+            {entry.name.split(' ')[0]}
+          </div>
+          <div className="text-[11px] text-gray-400">
+            {Math.round(entry.total_output_kj)} kj
+          </div>
+        </Link>
+        <div className={`${heights} ${block} mt-2 w-full rounded-t-md`} />
       </div>
     )
   }
 
   return (
-    <div className="flex items-end gap-2 mb-6 px-4 h-44">
-      <PodiumSlot entry={second} position="second" rank={2} />
-      <PodiumSlot entry={first} position="first" rank={1} />
-      <PodiumSlot entry={third} position="third" rank={3} />
+    <div className="mb-8 flex items-end gap-2 px-2 sm:gap-4 sm:px-6">
+      <PodiumSlot entry={first} rank={1} />
+      <PodiumSlot entry={second} rank={2} />
+      <PodiumSlot entry={third} rank={3} />
     </div>
   )
 }
@@ -99,9 +111,40 @@ function StreakDots({ weeks, total = 4 }: { weeks: number; total?: number }) {
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
-          className={`w-2 h-2 rounded-full ${i < weeks ? 'bg-green-500' : 'bg-gray-200'}`}
+          className={`h-2 w-2 rounded-full ${
+            i < weeks ? 'bg-emerald-500' : 'bg-gray-200'
+          }`}
         />
       ))}
+    </div>
+  )
+}
+
+function StatCard({
+  label,
+  value,
+  unit,
+  detail,
+}: {
+  label: string
+  value: string
+  unit?: string
+  detail?: string
+}) {
+  return (
+    <div className="ring-card flex flex-col rounded-2xl border border-gray-100 bg-white p-4">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+        {label}
+      </p>
+      <p className="mt-2 flex items-baseline gap-1 text-2xl font-semibold text-gray-900">
+        {value}
+        {unit && (
+          <span className="text-sm font-normal text-gray-400">{unit}</span>
+        )}
+      </p>
+      {detail && (
+        <p className="mt-0.5 truncate text-xs text-gray-500">{detail}</p>
+      )}
     </div>
   )
 }
@@ -117,167 +160,163 @@ export default function LeaderboardClient({ data }: { data: LeaderboardData }) {
 
   const visibleRows = showAll ? leaderboard : leaderboard.slice(0, 5)
 
-  // Find the owner/you row - first member marked is_you, or owner
-  const ownerEntry = leaderboard.find((e) => e.is_you)
-
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-lg font-medium text-gray-900">Tabata Tuesday</h1>
-        <span className="text-xs text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1">
+    <div className="mx-auto max-w-3xl">
+      {/* Page heading */}
+      <div className="mb-6 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+            Leaderboard
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Where the group stands this week.
+          </p>
+        </div>
+        <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-500">
           Week of {weekDate}
         </span>
       </div>
 
       {/* Summary stat cards */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 p-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Group output</p>
-          <p className="text-xl font-medium text-gray-900">
-            {week_stats.group_total_output_kj.toLocaleString()}
-          </p>
-          <p className="text-xs text-gray-400">kj this week</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Showing up</p>
-          <p className="text-xl font-medium text-gray-900">
-            {week_stats.active_members}/{week_stats.total_members}
-          </p>
-          <p className="text-xs text-gray-400">members active</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Top output</p>
-          <p className="text-xl font-medium text-gray-900">
-            {Math.round(week_stats.top_performer_kj)}
-          </p>
-          <p className="text-xs text-gray-400 truncate">
-            kj · {week_stats.top_performer_name?.split(' ')[0]}
-          </p>
-        </div>
+      <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Group output"
+          value={week_stats.group_total_output_kj.toLocaleString()}
+          unit="kj"
+          detail="this week"
+        />
+        <StatCard
+          label="Showing up"
+          value={`${week_stats.active_members}/${week_stats.total_members}`}
+          detail="members active"
+        />
+        <StatCard
+          label="Top output"
+          value={Math.round(week_stats.top_performer_kj).toLocaleString()}
+          unit="kj"
+          detail={week_stats.top_performer_name ?? '—'}
+        />
       </div>
 
       {/* Podium */}
       {leaderboard.length >= 3 && (
-        <>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">
+        <section className="ring-card mb-8 rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
+          <p className="mb-4 text-[11px] font-medium uppercase tracking-widest text-gray-400">
             This week&apos;s podium
           </p>
           <Podium entries={leaderboard} />
-        </>
+        </section>
       )}
 
       {/* Leaderboard table */}
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">
-        Full leaderboard
-      </p>
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
-        {visibleRows.map((entry, idx) => {
-          const isYou = entry.is_you
-          const rank = idx + 1
-          const rankColors: Record<number, string> = {
-            1: 'text-purple-500',
-            2: 'text-gray-400',
-            3: 'text-orange-500',
-          }
-          const rankColor = rankColors[rank] ?? 'text-gray-300'
-          const percentileStr = entry.leaderboard_percentile
-            ? `top ${Math.round(100 - entry.leaderboard_percentile)}%`
-            : null
-
-          return (
-            <Link
-              key={entry.member_id}
-              href={`/member/${entry.member_id}`}
-              className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors ${
-                isYou ? 'bg-blue-50' : ''
-              }`}
-            >
-              <span className={`text-sm font-medium w-5 text-center ${rankColor}`}>
-                {rank}
-              </span>
-              <Avatar initials={entry.initials} rank={rank} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-gray-900 truncate">
-                    {entry.name}
+      <section className="ring-card mb-8 overflow-hidden rounded-3xl border border-gray-100 bg-white">
+        <div className="border-b border-gray-100 px-5 py-3">
+          <h2 className="text-sm font-medium text-gray-900">Full leaderboard</h2>
+        </div>
+        <ul>
+          {visibleRows.map((entry, idx) => {
+            const isYou = entry.is_you
+            const rank = idx + 1
+            const rankColor = RANK_TEXT[rank] ?? 'text-gray-300'
+            const percentileStr = entry.leaderboard_percentile
+              ? `top ${Math.round(100 - entry.leaderboard_percentile)}% globally`
+              : null
+            return (
+              <li key={entry.member_id}>
+                <Link
+                  href={`/member/${entry.member_id}`}
+                  className={
+                    'flex items-center gap-3 border-b border-gray-50 px-5 py-3 transition-colors last:border-b-0 hover:bg-gray-50 sm:gap-4 ' +
+                    (isYou ? 'bg-blue-50/60' : '')
+                  }
+                >
+                  <span
+                    className={`w-6 text-center text-sm font-semibold ${rankColor}`}
+                  >
+                    {rank}
                   </span>
-                  {isYou && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                      you
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {entry.workout_count} ride{entry.workout_count !== 1 ? 's' : ''}
-                  {percentileStr ? ` · ${percentileStr} globally` : ''}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium text-gray-900">
-                  {Math.round(entry.total_output_kj)} kj
-                </div>
-                {entry.best_leaderboard_rank && (
-                  <div className="text-xs text-gray-400">
-                    #{entry.best_leaderboard_rank.toLocaleString()}
+                  <Avatar initials={entry.initials} rank={rank} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-gray-900">
+                        {entry.name}
+                      </span>
+                      {isYou && (
+                        <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                          you
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {entry.workout_count} ride
+                      {entry.workout_count !== 1 ? 's' : ''}
+                      {percentileStr ? ` · ${percentileStr}` : ''}
+                    </div>
                   </div>
-                )}
-              </div>
-            </Link>
-          )
-        })}
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-gray-900 tabular-nums">
+                      {Math.round(entry.total_output_kj)}
+                      <span className="ml-0.5 text-[11px] font-normal text-gray-400">
+                        kj
+                      </span>
+                    </div>
+                    {entry.best_leaderboard_rank && (
+                      <div className="text-xs text-gray-400">
+                        #{entry.best_leaderboard_rank.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
 
         {!showAll && leaderboard.length > 5 && (
           <button
             onClick={() => setShowAll(true)}
-            className="w-full py-2.5 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+            className="block w-full border-t border-gray-50 py-2.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
           >
             Show {leaderboard.length - 5} more members
           </button>
         )}
-      </div>
+      </section>
 
       {/* Consistency streaks */}
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">
-        Consistency streaks
-      </p>
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        {leaderboard.slice(0, 4).map((entry) => (
-          <div
-            key={entry.member_id}
-            className="bg-white rounded-xl border border-gray-100 p-3"
-          >
-            <p className="text-xs text-gray-400 mb-2 truncate">{entry.name}</p>
-            <StreakDots weeks={entry.streak_weeks} />
-            <p className="text-xs font-medium text-gray-700 mt-1.5">
-              {entry.streak_weeks} week{entry.streak_weeks !== 1 ? 's' : ''}
-            </p>
+      {leaderboard.length > 0 && (
+        <section>
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-widest text-gray-400">
+            Consistency streaks
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {leaderboard.slice(0, 4).map((entry) => (
+              <Link
+                key={entry.member_id}
+                href={`/member/${entry.member_id}`}
+                className="ring-card group rounded-2xl border border-gray-100 bg-white p-3 transition-colors hover:border-purple-200"
+              >
+                <p className="mb-2 truncate text-xs text-gray-500 group-hover:text-gray-700">
+                  {entry.name}
+                </p>
+                <StreakDots weeks={entry.streak_weeks} />
+                <p className="mt-2 text-xs font-medium text-gray-700">
+                  {entry.streak_weeks} week
+                  {entry.streak_weeks !== 1 ? 's' : ''}
+                </p>
+              </Link>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* Navigation */}
-      <div className="flex justify-around bg-white rounded-2xl border border-gray-100 py-3">
-        <Link href="/" className="flex flex-col items-center gap-1 text-purple-600">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <rect x="2" y="9" width="5" height="9" rx="1" fill="currentColor" opacity="0.8"/>
-            <rect x="7.5" y="6" width="5" height="12" rx="1" fill="currentColor"/>
-            <rect x="13" y="2" width="5" height="16" rx="1" fill="currentColor" opacity="0.6"/>
-          </svg>
-          <span className="text-xs">Leaderboard</span>
-        </Link>
-        <Link href={ownerEntry ? `/member/${ownerEntry.member_id}` : '#'} className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M10 6v4l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-          <span className="text-xs">My stats</span>
-        </Link>
-      </div>
+        </section>
+      )}
 
       {/* Last synced footer */}
-      <p className="text-center text-xs text-gray-300 mt-4">
-        Syncs daily · {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+      <p className="mt-8 text-center text-xs text-gray-400">
+        Syncs daily ·{' '}
+        {new Date().toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        })}
       </p>
     </div>
   )

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (memberErr || !member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
 
     const { data: recentWorkouts } = await db.from('workouts')
-      .select('id, workout_date, title, instructor_name, duration_seconds, total_output_kj, leaderboard_rank, leaderboard_total, fitness_discipline')
+      .select('id, workout_date, title, instructor_name, duration_seconds, total_output_kj, leaderboard_rank, leaderboard_total, fitness_discipline, ride_id')
       .eq('member_id', memberId).eq('fitness_discipline', 'cycling')
       .order('workout_date', { ascending: false }).limit(10)
 

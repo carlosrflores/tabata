@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Breadcrumbs from '@/app/components/Breadcrumbs'
 
 interface Member {
   id: string
@@ -104,20 +105,28 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-white rounded-2xl border border-gray-100 p-8 w-full max-w-sm">
-          <h1 className="text-lg font-medium text-gray-900 mb-6">Admin access</h1>
+      <div className="mx-auto max-w-3xl">
+        <Breadcrumbs
+          items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]}
+        />
+        <div className="ring-card mx-auto mt-6 w-full max-w-sm rounded-3xl border border-gray-100 bg-white p-8">
+          <h1 className="mb-1 text-xl font-semibold text-gray-900">
+            Admin access
+          </h1>
+          <p className="mb-6 text-xs text-gray-500">
+            Enter the CRON_SECRET to manage members and trigger syncs.
+          </p>
           <input
             type="password"
-            placeholder="Enter your CRON_SECRET"
+            placeholder="CRON_SECRET"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-purple-200"
+            className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
             onKeyDown={(e) => e.key === 'Enter' && setAuthed(true)}
           />
           <button
             onClick={() => setAuthed(true)}
-            className="w-full bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 transition-colors"
+            className="w-full rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-2 text-sm font-medium text-white shadow transition-shadow hover:shadow-md"
           >
             Continue
           </button>
@@ -127,12 +136,20 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-lg font-medium text-gray-900">Admin</h1>
-        <a href="/" className="text-sm text-gray-400 hover:text-gray-600">
-          View leaderboard →
-        </a>
+    <div className="mx-auto max-w-3xl">
+      <Breadcrumbs
+        items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]}
+      />
+
+      <div className="mb-6 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+            Admin
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Add members, paste new bearer tokens, and trigger syncs.
+          </p>
+        </div>
       </div>
 
       {/* Sync controls */}

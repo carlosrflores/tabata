@@ -6,6 +6,7 @@
 // position vs. the column max — instant visual ranking without reading numbers.
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   formatNumber,
@@ -109,20 +110,21 @@ export default function RideDetailClient({ rows }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+    <div className="ring-card overflow-x-auto rounded-3xl border border-gray-100 bg-white">
       <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-50">
+        <thead className="bg-gray-50/50">
+          <tr className="border-b border-gray-100">
             {COLUMNS.map((col) => (
               <th
                 key={col.key}
-                className={`px-3 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide ${
+                scope="col"
+                className={`px-3 py-3 text-[10px] font-medium uppercase tracking-wider text-gray-500 ${
                   col.align === 'right' ? 'text-right' : 'text-left'
                 }`}
               >
                 <button
                   onClick={() => setSort(col.key)}
-                  className="inline-flex items-center gap-1 hover:text-purple-600 transition-colors"
+                  className="inline-flex items-center gap-1 transition-colors hover:text-purple-600"
                 >
                   {col.label}
                   {sort === col.key && (
@@ -142,19 +144,22 @@ export default function RideDetailClient({ rows }: Props) {
             return (
               <tr
                 key={row.member_id}
-                className={`border-b border-gray-50 last:border-0 ${
-                  isLeader ? 'bg-purple-50/50' : ''
+                className={`border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/60 ${
+                  isLeader ? 'bg-purple-50/40' : ''
                 }`}
               >
                 {/* Member */}
                 <td className="whitespace-nowrap px-3 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-medium flex-shrink-0">
+                  <Link
+                    href={`/member/${row.member_id}`}
+                    className="group inline-flex items-center gap-2"
+                  >
+                    <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-purple-100 text-xs font-medium text-purple-800 ring-2 ring-white shadow-sm">
                       {row.member_initials}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium text-gray-800">
+                        <span className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
                           {row.member_name}
                         </span>
                         {row.is_personal_record && (
@@ -168,7 +173,7 @@ export default function RideDetailClient({ rows }: Props) {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </Link>
                 </td>
 
                 {/* Date */}
