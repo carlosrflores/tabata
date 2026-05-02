@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "*.supabase.co",
+        "*.supabase.com",
+        "api.vercel.com",
+        "vercel.com",
+        "*.vercel-storage.com",
+        "api.onepeloton.com",
+        "members.onepeloton.com"
+      ]
+    }
+  }
+}
