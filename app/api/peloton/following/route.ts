@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { authenticatePeloton, fetchAllFollowing } from '@/lib/peloton'
+import { fetchAllFollowing } from '@/lib/peloton'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,9 +12,10 @@ export async function GET(req: NextRequest) {
 
   const db = getSupabaseAdmin()
 
+  // Fetch owner's ID and their Peloton user ID together
   const { data: owner } = await db
     .from('members')
-    .select('id')
+    .select('id, peloton_user_id')
     .eq('is_owner', true)
     .single()
 
@@ -28,8 +29,8 @@ export async function GET(req: NextRequest) {
     .eq('member_id', owner.id)
     .single()
 
-  if (!ownerCreds?.peloton_bearer_token) {
-    return NextResponse.json({ users: [] })
+  if (!ownerCreds?.peloton_bearer_token || !owner.peloton_user_id) {
+    return NextResponse.json({ users: [], message: 'Owner credentials or user ID not found' })
   }
 
   const { data: existingMembers } = await db
@@ -38,15 +39,19 @@ export async function GET(req: NextRequest) {
 
   const existingIds = new Set((existingMembers ?? []).map((m) => m.peloton_user_id as string))
 
-  // tmp debug: surface token info alongside any error
-  const _tokenPrefix = ownerCreds.peloton_bearer_token.slice(0, 20)
+  // Build the session directly from stored data — no need to call /api/me
+  // since we already have the owner's Peloton user ID in the members table.
+  const session = {
+    token: ownerCreds.peloton_bearer_token,
+    userId: owner.peloton_user_id as string,
+  }
+
   try {
-    const session = await authenticatePeloton(ownerCreds.peloton_bearer_token)
     const allFollowing = await fetchAllFollowing(session)
     const available = allFollowing.filter((u) => u.id && !existingIds.has(u.id))
     return NextResponse.json({ users: available })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message, _debug_token_prefix: _tokenPrefix, _debug_token_len: ownerCreds.peloton_bearer_token.length }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
