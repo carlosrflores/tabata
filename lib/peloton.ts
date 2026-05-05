@@ -36,6 +36,7 @@ export async function authenticatePeloton(
 
   const res = await fetch(`${PELOTON_BASE}/api/me`, {
     headers: pelotonHeaders(token),
+    cache: 'no-store',
   })
 
   if (!res.ok) {
