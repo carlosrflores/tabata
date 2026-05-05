@@ -111,7 +111,7 @@ export interface PelotonRide {
 
 export interface PelotonWorkoutPerformance {
   duration: number
-  avg_summaries: Array<{
+  average_summaries: Array<{
     display_name: string
     display_unit: string
     value: number

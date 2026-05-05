@@ -175,7 +175,7 @@ export async function fetchWorkoutPerformance(
   if (!res.ok) {
     // Performance graph sometimes 404s for non-cycling workouts — not fatal
     if (res.status === 404 || res.status === 500) {
-      return { duration: 0, avg_summaries: [], summaries: [] }
+      return { duration: 0, average_summaries: [], summaries: [] }
     }
     throw new Error(`Failed to fetch performance for ${workoutId} (${res.status})`)
   }
@@ -183,12 +183,12 @@ export async function fetchWorkoutPerformance(
   return res.json()
 }
 
-// Helper: extract a named metric from the avg_summaries array
+// Helper: extract a named metric from the average_summaries array
 export function extractAvgMetric(
   perf: PelotonWorkoutPerformance,
   name: string
 ): number | null {
-  const metric = perf.avg_summaries?.find(
+  const metric = perf.average_summaries?.find(
     (s) => s.display_name.toLowerCase() === name.toLowerCase()
   )
   return metric?.value ?? null

@@ -223,7 +223,7 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     for (const workout of newWorkouts) {
       try {
         const summary = await fetchWorkoutSummary(session, workout.id)
-        let perf: PelotonWorkoutPerformance = { duration: 0, avg_summaries: [], summaries: [] }
+        let perf: PelotonWorkoutPerformance = { duration: 0, average_summaries: [], summaries: [] }
         if (workout.fitness_discipline === 'cycling') {
           perf = await fetchWorkoutPerformance(session, workout.id)
         }
