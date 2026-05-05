@@ -42,17 +42,20 @@ export async function GET(req: NextRequest) {
   const userId = owner.peloton_user_id as string
   const token = ownerCreds.peloton_bearer_token
 
-  // tmp: raw fetch to isolate where the 401 comes from in this route
+  // tmp: probe multiple Peloton endpoints from this specific function to check IP/region
   const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
-  const raw5Res = await fetch(`https://api.onepeloton.com/api/user/${userId}/following?limit=5&page=0`, { headers: hdrs })
-  const raw100Res = await fetch(`https://api.onepeloton.com/api/user/${userId}/following?limit=100&page=0`, { headers: hdrs })
-  if (!raw5Res.ok || !raw100Res.ok) {
+  const [meRes, followRes] = await Promise.all([
+    fetch(`https://api.onepeloton.com/api/me`, { headers: hdrs }),
+    fetch(`https://api.onepeloton.com/api/user/${userId}/following?limit=5&page=0`, { headers: hdrs }),
+  ])
+  if (!meRes.ok || !followRes.ok) {
     return NextResponse.json({
-      error: 'raw fetch failed',
-      limit5_status: raw5Res.status,
-      limit100_status: raw100Res.status,
+      error: 'probe failed',
+      me_status: meRes.status,
+      follow_status: followRes.status,
       userId,
       token_prefix: token.slice(0, 20),
+      token_length: token.length,
     }, { status: 500 })
   }
 
