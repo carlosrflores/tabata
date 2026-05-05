@@ -34,13 +34,14 @@ export async function POST(req: NextRequest) {
 
     const { error: updateErr } = await db
       .from('member_credentials')
-      .upsert({ member_id: owner.id, peloton_bearer_token: session.token }, { onConflict: 'member_id' })
+      .update({ peloton_bearer_token: session.token, updated_at: new Date().toISOString() })
+      .eq('member_id', owner.id)
 
     if (updateErr) throw updateErr
 
     return NextResponse.json({ success: true, message: 'Token updated. Following list and syncs will now use the new token.' })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = err instanceof Error ? err.message : JSON.stringify(err)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
