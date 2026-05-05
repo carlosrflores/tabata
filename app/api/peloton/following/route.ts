@@ -38,6 +38,8 @@ export async function GET(req: NextRequest) {
 
   const existingIds = new Set((existingMembers ?? []).map((m) => m.peloton_user_id as string))
 
+  // tmp debug: surface token info alongside any error
+  const _tokenPrefix = ownerCreds.peloton_bearer_token.slice(0, 20)
   try {
     const session = await authenticatePeloton(ownerCreds.peloton_bearer_token)
     const allFollowing = await fetchAllFollowing(session)
@@ -45,6 +47,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users: available })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message, _debug_token_prefix: _tokenPrefix, _debug_token_len: ownerCreds.peloton_bearer_token.length }, { status: 500 })
   }
 }
