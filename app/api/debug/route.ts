@@ -43,7 +43,8 @@ export async function GET(req: NextRequest) {
   const endpoints: Record<string, string> = {
     'me': 'https://api.onepeloton.com/api/me',
     'workouts': `https://api.onepeloton.com/api/user/${token ? 'cd6010de851244008c4c89319c220700' : ''}/workouts?limit=1`,
-    'following': `https://api.onepeloton.com/api/user/cd6010de851244008c4c89319c220700/following?limit=1`,
+    'following_1': `https://api.onepeloton.com/api/user/cd6010de851244008c4c89319c220700/following?limit=1&page=0`,
+    'following_100': `https://api.onepeloton.com/api/user/cd6010de851244008c4c89319c220700/following?limit=100&page=0`,
     'search': `https://api.onepeloton.com/api/user/search?user_query=humantag&limit=5`,
   }
   const endpointResults: Record<string, number> = {}
