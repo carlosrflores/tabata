@@ -194,6 +194,17 @@ export function extractAvgMetric(
   return metric?.value ?? null
 }
 
+// Helper: extract a named metric from the summaries array (Total Output, Distance, Calories)
+export function extractSummaryMetric(
+  perf: PelotonWorkoutPerformance,
+  name: string
+): number | null {
+  const metric = perf.summaries?.find(
+    (s) => s.display_name.toLowerCase() === name.toLowerCase()
+  )
+  return metric?.value ?? null
+}
+
 // Fetch full metadata for a single ride (class).
 // Used by the sync job to populate the `rides` table.
 //

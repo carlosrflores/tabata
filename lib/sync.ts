@@ -6,6 +6,7 @@ import {
   fetchWorkoutPerformance,
   fetchRide,
   extractAvgMetric,
+  extractSummaryMetric,
 } from '@/lib/peloton'
 import type { PelotonSession } from '@/lib/peloton'
 import type {
@@ -130,12 +131,12 @@ function transformWorkout(
     instructor_name: summary.ride?.instructor?.name ?? null,
     duration_seconds: summary.ride?.duration ?? null,
     total_output_kj: outputKj,
-    avg_watts: extractAvgMetric(perf, 'Output') ?? extractAvgMetric(perf, 'Avg. Watts'),
-    avg_cadence: extractAvgMetric(perf, 'Cadence'),
-    avg_resistance: extractAvgMetric(perf, 'Resistance'),
-    avg_speed: extractAvgMetric(perf, 'Speed'),
-    distance_miles: extractAvgMetric(perf, 'Distance'),
-    calories: extractAvgMetric(perf, 'Calories'),
+    avg_watts: extractAvgMetric(perf, 'Avg Output'),
+    avg_cadence: extractAvgMetric(perf, 'Avg Cadence'),
+    avg_resistance: extractAvgMetric(perf, 'Avg Resistance'),
+    avg_speed: extractAvgMetric(perf, 'Avg Speed'),
+    distance_miles: extractSummaryMetric(perf, 'Distance'),
+    calories: extractSummaryMetric(perf, 'Calories'),
     leaderboard_rank: summary.leaderboard_rank ?? null,
     leaderboard_total: summary.total_leaderboard_users ?? null,
     difficulty_rating: summary.ride?.difficulty_rating_avg ?? null,

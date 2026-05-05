@@ -80,6 +80,51 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ status: r.status, average_summaries: body.average_summaries ?? null, summaries: body.summaries ?? null, duration: body.duration })
   }
 
+  // ?mode=backfill-perf&limit=N — backfill avg_watts/cadence/resistance for cycling workouts missing them
+  // Processes N workouts per call (default 50). Call repeatedly until done=true.
+  if (mode === 'backfill-perf') {
+    const batchSize = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '50'), 100)
+    const { data: owner } = await db.from('members').select('id, peloton_user_id').eq('is_owner', true).single()
+    const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token').eq('member_id', owner?.id ?? '').single()
+    const token = creds?.peloton_bearer_token ?? ''
+    const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
+
+    const { data: rows } = await db.from('workouts')
+      .select('id, peloton_workout_id')
+      .eq('fitness_discipline', 'cycling')
+      .is('avg_watts', null)
+      .not('peloton_workout_id', 'is', null)
+      .limit(batchSize)
+
+    if (!rows || rows.length === 0) return NextResponse.json({ done: true, updated: 0 })
+
+    let updated = 0, failed = 0
+    for (const row of rows) {
+      try {
+        const r = await fetch(
+          `https://api.onepeloton.com/api/workout/${row.peloton_workout_id}/performance_graph?every_n=5`,
+          { headers: hdrs, cache: 'no-store' }
+        )
+        if (!r.ok) { failed++; continue }
+        const body = await r.json()
+        const avgS = (body.average_summaries ?? []) as Array<{ display_name: string; value: number }>
+        const sumS = (body.summaries ?? []) as Array<{ display_name: string; value: number }>
+        const find = (arr: typeof avgS, name: string) => arr.find(s => s.display_name.toLowerCase() === name.toLowerCase())?.value ?? null
+        await db.from('workouts').update({
+          avg_watts: find(avgS, 'Avg Output'),
+          avg_cadence: find(avgS, 'Avg Cadence'),
+          avg_resistance: find(avgS, 'Avg Resistance'),
+          avg_speed: find(avgS, 'Avg Speed'),
+          distance_miles: find(sumS, 'Distance'),
+          calories: find(sumS, 'Calories'),
+        }).eq('id', row.id)
+        updated++
+        await new Promise(r => setTimeout(r, 150))
+      } catch { failed++ }
+    }
+    return NextResponse.json({ done: rows.length < batchSize, updated, failed, remaining_approx: rows.length === batchSize ? '?' : 0 })
+  }
+
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
   if (mode === 'sync') {
     try {
