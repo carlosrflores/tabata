@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { authenticatePeloton, fetchFollowing } from '@/lib/peloton'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,13 +39,29 @@ export async function GET(req: NextRequest) {
     pelotonError = e instanceof Error ? e.message : String(e)
   }
 
+  // Also run through the exact same code path as the following endpoint
+  let authStatus: string | null = null
+  let followingCount: number | null = null
+  let authError: string | null = null
+  try {
+    const session = await authenticatePeloton(token)
+    authStatus = `OK userId=${session.userId}`
+    const { users } = await fetchFollowing(session, 0, 5)
+    followingCount = users.length
+  } catch (e) {
+    authError = e instanceof Error ? e.message : String(e)
+  }
+
   return NextResponse.json({
     owner: owner?.name,
     token_prefix: token.slice(0, 40),
     token_length: token.length,
     updated_at: creds?.updated_at,
     iat, exp,
-    peloton_status: pelotonStatus,
-    peloton_error: pelotonError,
+    peloton_direct_status: pelotonStatus,
+    peloton_direct_error: pelotonError,
+    auth_via_lib: authStatus,
+    following_sample: followingCount,
+    auth_lib_error: authError,
   })
 }
