@@ -4,9 +4,10 @@ import { authenticatePeloton, fetchAllFollowing, fetchFollowing } from '@/lib/pe
 import { syncMember, syncAllMembers } from '@/lib/sync'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
 
-// This Lambda has reliable outbound connectivity to api.onepeloton.com.
-// Other Lambda instances hit Vercel IPs that Peloton blocks.
+// Edge Runtime uses Cloudflare's network — different IPs than Lambda.
+// Peloton blocks most Vercel Lambda egress IPs (error_code 3020).
 // All Peloton API work (following list, sync) is routed through here.
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
   const parts = token.split('.')
   let iat = null, exp = null
   try {
-    const payload = JSON.parse(Buffer.from(parts[1] ?? '', 'base64').toString())
+    const payload = JSON.parse(atob(parts[1] ?? ''))
     iat = payload.iat
     exp = payload.exp
   } catch { /* ignore */ }
