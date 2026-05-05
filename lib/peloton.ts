@@ -82,7 +82,7 @@ export async function fetchFollowing(
 ): Promise<{ users: PelotonFollowingUser[]; total: number }> {
   const res = await fetch(
     `${PELOTON_BASE}/api/user/${session.userId}/following?limit=${limit}&page=${page}`,
-    { headers: pelotonHeaders(session.token) }
+    { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
   if (!res.ok) {
     throw new Error(`Failed to fetch following list (${res.status})`)
@@ -130,6 +130,7 @@ export async function fetchWorkoutList(
 
   const res = await fetch(url, {
     headers: pelotonHeaders(session.token),
+    cache: 'no-store',
   })
 
   if (!res.ok) {
@@ -150,7 +151,7 @@ export async function fetchWorkoutSummary(
 ): Promise<PelotonWorkoutSummary> {
   const res = await fetch(
     `${PELOTON_BASE}/api/workout/${workoutId}?joins=ride,ride.instructor`,
-    { headers: pelotonHeaders(session.token) }
+    { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
 
   if (!res.ok) {
@@ -167,7 +168,7 @@ export async function fetchWorkoutPerformance(
 ): Promise<PelotonWorkoutPerformance> {
   const res = await fetch(
     `${PELOTON_BASE}/api/workout/${workoutId}/performance_graph?every_n=5`,
-    { headers: pelotonHeaders(session.token) }
+    { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
 
   if (!res.ok) {
@@ -208,7 +209,7 @@ export async function fetchRide(
 ): Promise<PelotonRide> {
   const res = await fetch(
     `${PELOTON_BASE}/api/ride/${rideId}?joins=instructor`,
-    { headers: pelotonHeaders(session.token) }
+    { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
 
   if (!res.ok) {
