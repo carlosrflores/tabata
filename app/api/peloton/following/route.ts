@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
   // tmp: probe multiple Peloton endpoints from this specific function to check IP/region
   const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
   const [meRes, followRes] = await Promise.all([
-    fetch(`https://api.onepeloton.com/api/me`, { headers: hdrs }),
-    fetch(`https://api.onepeloton.com/api/user/${userId}/following?limit=5&page=0`, { headers: hdrs }),
+    fetch(`https://api.onepeloton.com/api/me`, { headers: hdrs, cache: 'no-store' }),
+    fetch(`https://api.onepeloton.com/api/user/${userId}/following?limit=5&page=0`, { headers: hdrs, cache: 'no-store' }),
   ])
   if (!meRes.ok || !followRes.ok) {
     return NextResponse.json({

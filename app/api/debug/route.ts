@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
         'Peloton-Platform': 'web',
         'Accept': 'application/json',
       },
+      cache: 'no-store',
     })
     pelotonStatus = r.status
     if (!r.ok) pelotonError = await r.text().then(t => t.slice(0, 200))
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
   const endpointResults: Record<string, number> = {}
   for (const [name, url] of Object.entries(endpoints)) {
     try {
-      const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' } })
+      const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }, cache: 'no-store' })
       endpointResults[name] = r.status
     } catch { endpointResults[name] = -1 }
   }
