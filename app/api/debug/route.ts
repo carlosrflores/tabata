@@ -66,6 +66,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ token_prefix: token.slice(0, 20), token_length: token.length, results })
   }
 
+  // ?mode=test-perf&workoutId=X — fetch raw performance graph to inspect avg_summaries display names
+  if (mode === 'test-perf') {
+    const workoutId = req.nextUrl.searchParams.get('workoutId')
+    if (!workoutId) return NextResponse.json({ error: 'workoutId required' }, { status: 400 })
+    const { data: owner } = await db.from('members').select('id, peloton_user_id').eq('is_owner', true).single()
+    const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token').eq('member_id', owner?.id ?? '').single()
+    const token = creds?.peloton_bearer_token ?? ''
+    const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
+    const r = await fetch(`https://api.onepeloton.com/api/workout/${workoutId}/performance_graph?every_n=5`, { headers: hdrs, cache: 'no-store' })
+    const body = await r.json().catch(() => ({}))
+    return NextResponse.json({ status: r.status, avg_summaries: body.avg_summaries, summaries_count: body.summaries?.length })
+  }
+
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
   if (mode === 'sync') {
     try {

@@ -24,6 +24,8 @@ interface FollowingUser {
 export default function AdminPage() {
   const [secret, setSecret] = useState('')
   const [authed, setAuthed] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [authChecking, setAuthChecking] = useState(false)
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
@@ -74,8 +76,8 @@ export default function AdminPage() {
   }, [secret])
 
   useEffect(() => {
-    if (authed) loadMembers()
-  }, [authed, loadMembers])
+    if (authed && members.length === 0) loadMembers()
+  }, [authed, members.length, loadMembers])
 
   // Load the following list whenever the member list refreshes and an owner exists
   useEffect(() => {
@@ -184,6 +186,21 @@ export default function AdminPage() {
     setRefreshing(false)
   }
 
+  async function handleAuthSubmit() {
+    if (!secret.trim()) { setAuthError('Enter the CRON_SECRET.'); return }
+    setAuthChecking(true)
+    setAuthError(null)
+    const res = await fetch('/api/members', { headers: { Authorization: `Bearer ${secret}` } })
+    if (res.ok) {
+      const data = await res.json()
+      setMembers(data.members)
+      setAuthed(true)
+    } else {
+      setAuthError('Incorrect secret — try again.')
+    }
+    setAuthChecking(false)
+  }
+
   if (!authed) {
     return (
       <div className="mx-auto max-w-3xl">
@@ -193,19 +210,25 @@ export default function AdminPage() {
           <p className="mb-6 text-xs text-gray-500">
             Enter the CRON_SECRET to manage members and trigger syncs.
           </p>
+          {authError && (
+            <div className="mb-3 rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
+              {authError}
+            </div>
+          )}
           <input
             type="password"
             placeholder="CRON_SECRET"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
-            onKeyDown={(e) => e.key === 'Enter' && setAuthed(true)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAuthSubmit()}
           />
           <button
-            onClick={() => setAuthed(true)}
-            className="w-full rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-2 text-sm font-medium text-white shadow transition-shadow hover:shadow-md"
+            onClick={handleAuthSubmit}
+            disabled={authChecking}
+            className="w-full rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-2 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-60"
           >
-            Continue
+            {authChecking ? 'Checking…' : 'Continue'}
           </button>
         </div>
       </div>
@@ -485,7 +508,7 @@ export default function AdminPage() {
                 </div>
                 <div className="text-xs text-gray-400">
                   @{member.peloton_username} · {member.workout_count} workouts
-                  {member.last_sync && (
+                  {member.last_sync?.completed_at && (
                     <>
                       {' · '}
                       <span className={member.last_sync.status === 'error' ? 'text-red-400' : 'text-gray-400'}>

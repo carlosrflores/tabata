@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
     .select('id, name, initials, peloton_username, is_owner, active, created_at')
     .order('created_at', { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  const { data: syncLogs } = await db.from('sync_log').select('member_id, completed_at, status').order('completed_at', { ascending: false })
+  const { data: syncLogs } = await db.from('sync_log').select('member_id, completed_at, status').neq('status', 'running').not('completed_at', 'is', null).order('completed_at', { ascending: false })
   const lastSync: Record<string, { completed_at: string; status: string }> = {}
   for (const log of syncLogs ?? []) {
     if (!lastSync[log.member_id]) lastSync[log.member_id] = log
