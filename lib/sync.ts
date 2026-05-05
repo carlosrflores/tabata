@@ -1,12 +1,13 @@
 import { getSupabaseAdmin } from '@/lib/supabase'
 import {
-  authenticatePeloton,
+  createSession,
   fetchNewWorkouts,
   fetchWorkoutSummary,
   fetchWorkoutPerformance,
   fetchRide,
   extractAvgMetric,
 } from '@/lib/peloton'
+import type { PelotonSession } from '@/lib/peloton'
 import type {
   PelotonWorkoutSummary,
   PelotonWorkoutPerformance,
@@ -18,7 +19,6 @@ import type {
 const RIDE_CACHE_TTL_DAYS = 30
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>
-type PelotonSession = Awaited<ReturnType<typeof authenticatePeloton>>
 
 function transformRide(ride: PelotonRide) {
   return {
@@ -170,11 +170,12 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     .single()
 
   if (creds?.peloton_bearer_token) {
-    session = await authenticatePeloton(creds.peloton_bearer_token)
+    // Member has their own token — use it directly. targetUserId routes the API call.
+    session = createSession(creds.peloton_bearer_token, member.peloton_user_id ?? '')
   } else {
     const { data: owner } = await db
       .from('members')
-      .select('id')
+      .select('id, peloton_user_id')
       .eq('is_owner', true)
       .single()
     if (!owner) {
@@ -188,7 +189,8 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     if (!ownerCreds?.peloton_bearer_token) {
       return { memberId, memberName: member.name, workoutsAdded: 0, error: 'Owner has no credentials stored' }
     }
-    session = await authenticatePeloton(ownerCreds.peloton_bearer_token)
+    // Use owner's token with owner's userId; targetUserId routes the workout fetch to the right member.
+    session = createSession(ownerCreds.peloton_bearer_token, owner.peloton_user_id ?? '')
   }
 
   const { data: logEntry } = await db

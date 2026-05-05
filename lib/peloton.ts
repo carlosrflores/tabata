@@ -6,9 +6,16 @@ import type {
 
 const PELOTON_BASE = 'https://api.onepeloton.com'
 
-interface PelotonSession {
+export interface PelotonSession {
   token: string
   userId: string
+}
+
+// Build a session directly from stored credentials without calling /api/me.
+// Use this when you already know the token is valid (e.g. it was just stored)
+// or when the /api/me validation step is unavailable (e.g. IP routing issues).
+export function createSession(token: string, userId: string): PelotonSession {
+  return { token: token.startsWith('Bearer ') ? token.slice(7) : token, userId }
 }
 
 // Build the headers Peloton's API expects.
