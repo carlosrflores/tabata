@@ -14,21 +14,30 @@ interface Member {
   last_sync: { completed_at: string; status: string } | null
 }
 
+interface FollowingUser {
+  id: string
+  username: string
+  name: string | null
+  image_url: string | null
+}
+
 export default function AdminPage() {
   const [secret, setSecret] = useState('')
   const [authed, setAuthed] = useState(false)
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    name: '',
-    initials: '',
-    peloton_username: '',
-    peloton_bearer_token: '',
-  })
+
+  // Add-member form state
+  const [form, setForm] = useState({ name: '', initials: '', peloton_username: '', peloton_user_id: '', peloton_bearer_token: '' })
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Following dropdown state (used when owner already exists)
+  const [following, setFollowing] = useState<FollowingUser[]>([])
+  const [followingLoading, setFollowingLoading] = useState(false)
+  const [followingError, setFollowingError] = useState<string | null>(null)
 
   const loadMembers = useCallback(async () => {
     setLoading(true)
@@ -42,11 +51,33 @@ export default function AdminPage() {
     setLoading(false)
   }, [secret])
 
+  const loadFollowing = useCallback(async () => {
+    setFollowingLoading(true)
+    setFollowingError(null)
+    const res = await fetch('/api/peloton/following', {
+      headers: { Authorization: `Bearer ${secret}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setFollowing(data.users ?? [])
+    } else {
+      const data = await res.json()
+      setFollowingError(data.error ?? 'Failed to load following list')
+    }
+    setFollowingLoading(false)
+  }, [secret])
+
   useEffect(() => {
     if (authed) loadMembers()
   }, [authed, loadMembers])
 
-  // Auto-generate initials from name
+  // Load the following list whenever the member list refreshes and an owner exists
+  useEffect(() => {
+    if (authed && members.some((m) => m.is_owner)) {
+      loadFollowing()
+    }
+  }, [authed, members, loadFollowing])
+
   function handleNameChange(name: string) {
     const parts = name.trim().split(' ')
     const initials =
@@ -56,19 +87,43 @@ export default function AdminPage() {
     setForm((f) => ({ ...f, name, initials }))
   }
 
+  function handleFollowingSelect(userId: string) {
+    if (!userId) {
+      setForm((f) => ({ ...f, peloton_user_id: '', peloton_username: '', name: '', initials: '' }))
+      return
+    }
+    const user = following.find((u) => u.id === userId)
+    if (!user) return
+    const displayName = user.name ?? user.username
+    const parts = displayName.trim().split(' ')
+    const initials =
+      parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : displayName.slice(0, 2).toUpperCase()
+    setForm((f) => ({
+      ...f,
+      peloton_user_id: user.id,
+      peloton_username: user.username,
+      name: displayName,
+      initials,
+    }))
+  }
+
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
     setFormSuccess(null)
     setSubmitting(true)
 
+    const isOwnerSetup = members.length === 0
+    const payload = isOwnerSetup
+      ? { name: form.name, initials: form.initials, peloton_username: form.peloton_username, peloton_bearer_token: form.peloton_bearer_token }
+      : { name: form.name, initials: form.initials, peloton_username: form.peloton_username, peloton_user_id: form.peloton_user_id }
+
     const res = await fetch('/api/members', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify(form),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+      body: JSON.stringify(payload),
     })
 
     const data = await res.json()
@@ -77,7 +132,7 @@ export default function AdminPage() {
       setFormError(data.error)
     } else {
       setFormSuccess(`${form.name} added successfully. Trigger a sync to pull their history.`)
-      setForm({ name: '', initials: '', peloton_username: '', peloton_bearer_token: '' })
+      setForm({ name: '', initials: '', peloton_username: '', peloton_user_id: '', peloton_bearer_token: '' })
       loadMembers()
     }
 
@@ -87,9 +142,7 @@ export default function AdminPage() {
   async function triggerSync(memberId?: string) {
     setSyncStatus('Syncing...')
     const url = memberId ? `/api/sync?memberId=${memberId}` : '/api/sync'
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${secret}` },
-    })
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${secret}` } })
     const data = await res.json()
 
     if (res.ok) {
@@ -106,13 +159,9 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <div className="mx-auto max-w-3xl">
-        <Breadcrumbs
-          items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]}
-        />
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]} />
         <div className="ring-card mx-auto mt-6 w-full max-w-sm rounded-3xl border border-gray-100 bg-white p-8">
-          <h1 className="mb-1 text-xl font-semibold text-gray-900">
-            Admin access
-          </h1>
+          <h1 className="mb-1 text-xl font-semibold text-gray-900">Admin access</h1>
           <p className="mb-6 text-xs text-gray-500">
             Enter the CRON_SECRET to manage members and trigger syncs.
           </p>
@@ -135,20 +184,17 @@ export default function AdminPage() {
     )
   }
 
+  const isOwnerSetup = members.length === 0
+  const hasOwner = members.some((m) => m.is_owner)
+
   return (
     <div className="mx-auto max-w-3xl">
-      <Breadcrumbs
-        items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]}
-      />
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]} />
 
       <div className="mb-6 flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
-            Admin
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Add members, paste new bearer tokens, and trigger syncs.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Admin</h1>
+          <p className="mt-1 text-sm text-gray-500">Add members and trigger syncs.</p>
         </div>
       </div>
 
@@ -157,18 +203,12 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-medium text-gray-900">Sync workouts</h2>
           {syncStatus && (
-            <span
-              className={`text-xs ${
-                syncStatus.startsWith('Error') ? 'text-red-500' : 'text-green-600'
-              }`}
-            >
+            <span className={`text-xs ${syncStatus.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
               {syncStatus}
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-400 mb-4">
-          Runs automatically daily at 6am. Use this to sync manually.
-        </p>
+        <p className="text-xs text-gray-400 mb-4">Runs automatically daily at 6am. Use this to sync manually.</p>
         <button
           onClick={() => triggerSync()}
           className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"
@@ -181,7 +221,9 @@ export default function AdminPage() {
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
         <h2 className="text-sm font-medium text-gray-900 mb-1">Add a member</h2>
         <p className="text-xs text-gray-400 mb-4">
-          Their Peloton bearer token is verified before being saved.
+          {isOwnerSetup
+            ? 'No members yet — add yourself as owner first. Your Peloton token is needed to bootstrap the system.'
+            : 'Pick a rider you follow on Peloton. Name and initials are pre-filled but editable.'}
         </p>
 
         {formError && (
@@ -196,106 +238,159 @@ export default function AdminPage() {
         )}
 
         <form onSubmit={handleAddMember} className="space-y-3">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-xs text-gray-400 mb-1">Full name</label>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="Sarah Kim"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
-              />
-            </div>
-            <div className="w-20">
-              <label className="block text-xs text-gray-400 mb-1">Initials</label>
-              <input
-                required
-                maxLength={2}
-                value={form.initials}
-                onChange={(e) => setForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))}
-                placeholder="SK"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 font-mono"
-              />
-            </div>
-          </div>
+          {isOwnerSetup ? (
+            /* Owner bootstrap — manual entry with bearer token */
+            <>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Full name</label>
+                  <input
+                    required
+                    value={form.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                  />
+                </div>
+                <div className="w-20">
+                  <label className="block text-xs text-gray-400 mb-1">Initials</label>
+                  <input
+                    required
+                    maxLength={2}
+                    value={form.initials}
+                    onChange={(e) => setForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))}
+                    placeholder="CF"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Peloton username</label>
+                <input
+                  required
+                  value={form.peloton_username}
+                  onChange={(e) => setForm((f) => ({ ...f, peloton_username: e.target.value.trim() }))}
+                  placeholder="your.username"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Peloton bearer token</label>
+                <input
+                  required
+                  type="password"
+                  value={form.peloton_bearer_token}
+                  onChange={(e) => setForm((f) => ({ ...f, peloton_bearer_token: e.target.value }))}
+                  placeholder="eyJhbGciOi..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+                />
+                <details className="mt-2">
+                  <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
+                    How to get the bearer token
+                  </summary>
+                  <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
+                    <li>Log in to <strong>members.onepeloton.com</strong> in your browser</li>
+                    <li>Open DevTools (F12) and go to the <strong>Network</strong> tab</li>
+                    <li>Reload the page or click around (e.g. view a class)</li>
+                    <li>Click any request to <strong>api.onepeloton.com</strong></li>
+                    <li>Under <strong>Request Headers</strong>, find the <strong>Authorization</strong> header</li>
+                    <li>Copy the value — it starts with <code className="bg-gray-100 px-1 rounded">Bearer eyJ...</code></li>
+                  </ol>
+                  <p className="mt-2 text-xs text-amber-600">
+                    Tokens expire every ~48 hours. After adding yourself, refresh the token here if syncs fail.
+                  </p>
+                </details>
+              </div>
+            </>
+          ) : (
+            /* Normal add-member flow — dropdown of followed riders */
+            <>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Rider</label>
+                {followingLoading ? (
+                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-400">
+                    Loading your Peloton following list…
+                  </div>
+                ) : followingError ? (
+                  <div className="text-xs text-red-500">{followingError}</div>
+                ) : following.length === 0 ? (
+                  <div className="text-xs text-gray-400">
+                    No available riders found. Make sure you follow them on Peloton first.
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={form.peloton_user_id}
+                    onChange={(e) => handleFollowingSelect(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 bg-white"
+                  >
+                    <option value="">— Select a rider —</option>
+                    {following.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name ? `${u.name} (@${u.username})` : `@${u.username}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Peloton username</label>
-            <input
-              required
-              value={form.peloton_username}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, peloton_username: e.target.value.trim() }))
-              }
-              placeholder="sarah.kim"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">
-              Peloton bearer token
-            </label>
-            <input
-              required
-              type="password"
-              value={form.peloton_bearer_token}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, peloton_bearer_token: e.target.value }))
-              }
-              placeholder="eyJhbGciOi..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
-            />
-            <details className="mt-2">
-              <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
-                How to get the bearer token
-              </summary>
-              <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
-                <li>Log in to <strong>members.onepeloton.com</strong> in your browser</li>
-                <li>Open DevTools (F12) and go to the <strong>Network</strong> tab</li>
-                <li>Reload the page or click around (e.g. view a class)</li>
-                <li>Click any request to <strong>api.onepeloton.com</strong></li>
-                <li>Under <strong>Request Headers</strong>, find the <strong>Authorization</strong> header</li>
-                <li>Copy the value — it starts with <code className="bg-gray-100 px-1 rounded">Bearer eyJ...</code></li>
-              </ol>
-              <p className="mt-2 text-xs text-amber-600">
-                Tokens expire every ~48 hours. If syncs start failing, a member
-                will need to paste a fresh token.
-              </p>
-            </details>
-          </div>
+              {form.peloton_user_id && (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-400 mb-1">Full name</label>
+                    <input
+                      required
+                      value={form.name}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      placeholder="Full name"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                    />
+                  </div>
+                  <div className="w-20">
+                    <label className="block text-xs text-gray-400 mb-1">Initials</label>
+                    <input
+                      required
+                      maxLength={2}
+                      value={form.initials}
+                      onChange={(e) => setForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))}
+                      placeholder="XX"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || (!isOwnerSetup && !form.peloton_user_id)}
             className="w-full bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
           >
-            {submitting ? 'Verifying token with Peloton...' : 'Add member'}
+            {submitting ? (isOwnerSetup ? 'Verifying token…' : 'Adding member…') : 'Add member'}
           </button>
         </form>
+
+        {hasOwner && (
+          <p className="mt-3 text-xs text-gray-400">
+            Only Peloton users you follow appear in the list. Follow them on Peloton first if they&apos;re missing.
+          </p>
+        )}
       </div>
 
       {/* Member list */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
-          <h2 className="text-sm font-medium text-gray-900">
-            Members ({members.length})
-          </h2>
+          <h2 className="text-sm font-medium text-gray-900">Members ({members.length})</h2>
         </div>
 
         {loading ? (
           <div className="px-5 py-8 text-center text-xs text-gray-300">Loading...</div>
         ) : members.length === 0 ? (
-          <div className="px-5 py-8 text-center text-xs text-gray-300">
-            No members yet. Add one above.
-          </div>
+          <div className="px-5 py-8 text-center text-xs text-gray-300">No members yet. Add yourself above.</div>
         ) : (
           members.map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-0"
-            >
+            <div key={member.id} className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-0">
               <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-medium flex-shrink-0">
                 {member.initials}
               </div>
@@ -303,9 +398,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-medium text-gray-800">{member.name}</span>
                   {member.is_owner && (
-                    <span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full">
-                      owner
-                    </span>
+                    <span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full">owner</span>
                   )}
                 </div>
                 <div className="text-xs text-gray-400">
@@ -313,13 +406,7 @@ export default function AdminPage() {
                   {member.last_sync && (
                     <>
                       {' · '}
-                      <span
-                        className={
-                          member.last_sync.status === 'error'
-                            ? 'text-red-400'
-                            : 'text-gray-400'
-                        }
-                      >
+                      <span className={member.last_sync.status === 'error' ? 'text-red-400' : 'text-gray-400'}>
                         {member.last_sync.status === 'error' ? 'sync error' : 'synced'}{' '}
                         {new Date(member.last_sync.completed_at).toLocaleDateString()}
                       </span>

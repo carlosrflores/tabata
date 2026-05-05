@@ -59,14 +59,66 @@ export async function authenticatePeloton(
   return { token, userId }
 }
 
-// Fetch a page of workouts for a user
-// Peloton paginates at 20 workouts per page by default
+export interface PelotonFollowingUser {
+  id: string
+  username: string
+  name: string | null
+  image_url: string | null
+}
+
+// Fetch one page of users that the session user follows.
+export async function fetchFollowing(
+  session: PelotonSession,
+  page = 0,
+  limit = 100
+): Promise<{ users: PelotonFollowingUser[]; total: number }> {
+  const res = await fetch(
+    `${PELOTON_BASE}/api/user/${session.userId}/following?limit=${limit}&page=${page}`,
+    { headers: pelotonHeaders(session.token) }
+  )
+  if (!res.ok) {
+    throw new Error(`Failed to fetch following list (${res.status})`)
+  }
+  const data = await res.json()
+  const raw: Array<Record<string, unknown>> = data.data ?? []
+  const users: PelotonFollowingUser[] = raw.map((u) => ({
+    id: String(u.id ?? ''),
+    username: String(u.username ?? ''),
+    name: (u.name as string | null) ?? null,
+    image_url: (u.image_url as string | null) ?? null,
+  }))
+  return { users, total: data.total ?? 0 }
+}
+
+// Fetch the full list of users the session user follows (auto-paginates).
+export async function fetchAllFollowing(
+  session: PelotonSession
+): Promise<PelotonFollowingUser[]> {
+  const all: PelotonFollowingUser[] = []
+  const limit = 100
+  let page = 0
+  while (true) {
+    const { users, total } = await fetchFollowing(session, page, limit)
+    all.push(...users)
+    if (all.length >= total || users.length < limit) break
+    page++
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  return all
+}
+
+// Fetch a page of workouts for a user.
+// Pass targetUserId to fetch another user's workouts using the session's token
+// (requires the session user to follow targetUserId on Peloton).
+// Peloton paginates at 20 workouts per page by default.
 export async function fetchWorkoutList(
   session: PelotonSession,
   page = 0,
-  limit = 20
+  limit = 20,
+  targetUserId?: string
 ): Promise<{ workouts: PelotonWorkoutSummary[]; total: number }> {
-  const url = `${PELOTON_BASE}/api/user/${session.userId}/workouts?joins=ride,ride.instructor&limit=${limit}&page=${page}&sort_by=-created`
+  const userId = targetUserId ?? session.userId
+  const url = `${PELOTON_BASE}/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=${limit}&page=${page}&sort_by=-created`
 
   const res = await fetch(url, {
     headers: pelotonHeaders(session.token),
@@ -158,17 +210,19 @@ export async function fetchRide(
   return res.json()
 }
 
-// Fetch all NEW workouts for a user (stops when it hits known IDs)
-// knownIds is the set of peloton_workout_ids already in the database
+// Fetch all NEW workouts for a user (stops when it hits known IDs).
+// knownIds is the set of peloton_workout_ids already in the database.
+// Pass targetUserId to fetch another user's workouts using the session's token.
 export async function fetchNewWorkouts(
   session: PelotonSession,
   knownIds: Set<string>,
-  maxPages = 10
+  maxPages = 10,
+  targetUserId?: string
 ): Promise<PelotonWorkoutSummary[]> {
   const newWorkouts: PelotonWorkoutSummary[] = []
 
   for (let page = 0; page < maxPages; page++) {
-    const { workouts } = await fetchWorkoutList(session, page)
+    const { workouts } = await fetchWorkoutList(session, page, 20, targetUserId)
 
     if (workouts.length === 0) break
 

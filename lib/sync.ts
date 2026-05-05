@@ -158,14 +158,37 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     return { memberId, memberName: 'Unknown', workoutsAdded: 0, error: 'Member not found' }
   }
 
-  const { data: creds, error: credsErr } = await db
+  // Try the member's own stored token first; fall back to the owner's token.
+  // This allows friends to be added by username alone without providing their own token.
+  let session: PelotonSession
+  const targetUserId = member.peloton_user_id
+
+  const { data: creds } = await db
     .from('member_credentials')
     .select('peloton_bearer_token')
     .eq('member_id', memberId)
     .single()
 
-  if (credsErr || !creds?.peloton_bearer_token) {
-    return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No bearer token stored' }
+  if (creds?.peloton_bearer_token) {
+    session = await authenticatePeloton(creds.peloton_bearer_token)
+  } else {
+    const { data: owner } = await db
+      .from('members')
+      .select('id')
+      .eq('is_owner', true)
+      .single()
+    if (!owner) {
+      return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No credentials and no owner found' }
+    }
+    const { data: ownerCreds } = await db
+      .from('member_credentials')
+      .select('peloton_bearer_token')
+      .eq('member_id', owner.id)
+      .single()
+    if (!ownerCreds?.peloton_bearer_token) {
+      return { memberId, memberName: member.name, workoutsAdded: 0, error: 'Owner has no credentials stored' }
+    }
+    session = await authenticatePeloton(ownerCreds.peloton_bearer_token)
   }
 
   const { data: logEntry } = await db
@@ -177,8 +200,6 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
   const logId = logEntry?.id
 
   try {
-    const session = await authenticatePeloton(creds.peloton_bearer_token)
-
     const { data: existingWorkouts } = await db
       .from('workouts')
       .select('peloton_workout_id')
@@ -186,7 +207,7 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
 
     const knownIds = new Set((existingWorkouts ?? []).map((w) => w.peloton_workout_id))
 
-    const newWorkouts = await fetchNewWorkouts(session, knownIds)
+    const newWorkouts = await fetchNewWorkouts(session, knownIds, 10, targetUserId ?? undefined)
 
     if (newWorkouts.length === 0) {
       await db.from('sync_log').update({ status: 'success', completed_at: new Date().toISOString(), workouts_added: 0 }).eq('id', logId)
