@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { fetchAllFollowing } from '@/lib/peloton'
+import { authenticatePeloton, fetchAllFollowing } from '@/lib/peloton'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,26 +42,20 @@ export async function GET(req: NextRequest) {
   const userId = owner.peloton_user_id as string
   const token = ownerCreds.peloton_bearer_token
 
-  // tmp: probe multiple Peloton endpoints from this specific function to check IP/region
-  const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
-  const [meRes, followRes] = await Promise.all([
-    fetch(`https://api.onepeloton.com/api/me`, { headers: hdrs, cache: 'no-store' }),
-    fetch(`https://api.onepeloton.com/api/user/${userId}/following?limit=5&page=0`, { headers: hdrs, cache: 'no-store' }),
-  ])
-  if (!meRes.ok || !followRes.ok) {
+  // tmp: use authenticatePeloton (same as debug route) to see if the issue is in direct fetch vs lib
+  let session
+  let authError: string | null = null
+  try {
+    session = await authenticatePeloton(token)
+  } catch (e) {
+    authError = e instanceof Error ? e.message : String(e)
     return NextResponse.json({
-      error: 'probe failed',
-      me_status: meRes.status,
-      follow_status: followRes.status,
-      userId,
+      error: 'authenticatePeloton failed',
+      auth_error: authError,
       token_prefix: token.slice(0, 20),
       token_length: token.length,
     }, { status: 500 })
   }
-
-  // Build the session directly from stored data — no need to call /api/me
-  // since we already have the owner's Peloton user ID in the members table.
-  const session = { token, userId }
 
   try {
     const allFollowing = await fetchAllFollowing(session)
