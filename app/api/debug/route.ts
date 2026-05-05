@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { authenticatePeloton, fetchAllFollowing, fetchFollowing } from '@/lib/peloton'
+import { syncMember, syncAllMembers } from '@/lib/sync'
 
 export const dynamic = 'force-dynamic'
 
+// This Lambda has reliable outbound connectivity to api.onepeloton.com.
+// Other Lambda instances hit Vercel IPs that Peloton blocks.
+// All Peloton API work (following list, sync) is routed through here.
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const mode = req.nextUrl.searchParams.get('mode')
   const db = getSupabaseAdmin()
-  const { data: owner } = await db.from('members').select('id, name, peloton_user_id').eq('is_owner', true).single()
-  const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token, updated_at').eq('member_id', owner?.id ?? '').single()
-  const token = creds?.peloton_bearer_token ?? ''
 
   // ?mode=following — return the full following list for the admin dropdown
-  if (req.nextUrl.searchParams.get('mode') === 'following') {
+  if (mode === 'following') {
+    const { data: owner } = await db.from('members').select('id, peloton_user_id').eq('is_owner', true).single()
+    const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token').eq('member_id', owner?.id ?? '').single()
+    const token = creds?.peloton_bearer_token
     if (!token || !owner?.peloton_user_id) {
       return NextResponse.json({ users: [], message: 'Owner credentials or user ID not found' })
     }
@@ -33,7 +38,36 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
+  if (mode === 'sync') {
+    try {
+      const results = await syncAllMembers()
+      const totalAdded = results.reduce((sum, r) => sum + r.workoutsAdded, 0)
+      return NextResponse.json({ results, total_workouts_added: totalAdded, synced_at: new Date().toISOString() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+
+  // ?mode=sync-member&memberId=X — sync a single member
+  if (mode === 'sync-member') {
+    const memberId = req.nextUrl.searchParams.get('memberId')
+    if (!memberId) return NextResponse.json({ error: 'memberId required' }, { status: 400 })
+    try {
+      const result = await syncMember(memberId)
+      return NextResponse.json({ results: [result], synced_at: new Date().toISOString() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+
   // Default: diagnostic info
+  const { data: owner } = await db.from('members').select('id, name, peloton_user_id').eq('is_owner', true).single()
+  const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token, updated_at').eq('member_id', owner?.id ?? '').single()
+  const token = creds?.peloton_bearer_token ?? ''
+
   const parts = token.split('.')
   let iat = null, exp = null
   try {
@@ -55,7 +89,7 @@ export async function GET(req: NextRequest) {
     pelotonError = e instanceof Error ? e.message : String(e)
   }
 
-  const userId = owner?.peloton_user_id ?? 'cd6010de851244008c4c89319c220700'
+  const userId = owner?.peloton_user_id ?? ''
   const endpoints: Record<string, string> = {
     'me': 'https://api.onepeloton.com/api/me',
     'workouts': `https://api.onepeloton.com/api/user/${userId}/workouts?limit=1`,
