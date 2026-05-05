@@ -21,11 +21,30 @@ export async function GET(req: NextRequest) {
     iat = payload.iat
     exp = payload.exp
   } catch { /* ignore */ }
+  // Test the token live against Peloton from this server
+  let pelotonStatus: number | null = null
+  let pelotonError: string | null = null
+  try {
+    const r = await fetch('https://api.onepeloton.com/api/me', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Peloton-Platform': 'web',
+        'Accept': 'application/json',
+      },
+    })
+    pelotonStatus = r.status
+    if (!r.ok) pelotonError = await r.text().then(t => t.slice(0, 200))
+  } catch (e) {
+    pelotonError = e instanceof Error ? e.message : String(e)
+  }
+
   return NextResponse.json({
     owner: owner?.name,
     token_prefix: token.slice(0, 40),
     token_length: token.length,
     updated_at: creds?.updated_at,
     iat, exp,
+    peloton_status: pelotonStatus,
+    peloton_error: pelotonError,
   })
 }
