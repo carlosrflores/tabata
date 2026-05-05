@@ -92,7 +92,8 @@ export async function GET(req: NextRequest) {
   const userId = owner?.peloton_user_id ?? ''
   const endpoints: Record<string, string> = {
     'me': 'https://api.onepeloton.com/api/me',
-    'workouts': `https://api.onepeloton.com/api/user/${userId}/workouts?limit=1`,
+    'workouts_plain': `https://api.onepeloton.com/api/user/${userId}/workouts?limit=1`,
+    'workouts_joins': `https://api.onepeloton.com/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=1&page=0&sort_by=-created`,
     'following_1': `https://api.onepeloton.com/api/user/${userId}/following?limit=1&page=0`,
     'following_100': `https://api.onepeloton.com/api/user/${userId}/following?limit=100&page=0`,
     'search': `https://api.onepeloton.com/api/user/search?user_query=humantag&limit=5`,

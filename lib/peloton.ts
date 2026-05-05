@@ -134,7 +134,8 @@ export async function fetchWorkoutList(
   })
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch workout list (${res.status})`)
+    const body = await res.text().catch(() => '')
+    throw new Error(`Failed to fetch workout list (${res.status}): ${body.slice(0, 300)}`)
   }
 
   const data = await res.json()
