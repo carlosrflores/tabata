@@ -76,7 +76,8 @@ export async function GET(req: NextRequest) {
     const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
     const r = await fetch(`https://api.onepeloton.com/api/workout/${workoutId}/performance_graph?every_n=5`, { headers: hdrs, cache: 'no-store' })
     const body = await r.json().catch(() => ({}))
-    return NextResponse.json({ status: r.status, avg_summaries: body.avg_summaries, summaries_count: body.summaries?.length })
+    // Return top-level keys and avg_summaries so we can see exact display_names
+    return NextResponse.json({ status: r.status, top_level_keys: Object.keys(body), avg_summaries: body.avg_summaries ?? null, duration: body.duration })
   }
 
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
