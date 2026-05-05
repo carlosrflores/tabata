@@ -39,6 +39,21 @@ export async function GET(req: NextRequest) {
     pelotonError = e instanceof Error ? e.message : String(e)
   }
 
+  // Test other Peloton endpoints from this server
+  const endpoints: Record<string, string> = {
+    'me': 'https://api.onepeloton.com/api/me',
+    'workouts': `https://api.onepeloton.com/api/user/${token ? 'cd6010de851244008c4c89319c220700' : ''}/workouts?limit=1`,
+    'following': `https://api.onepeloton.com/api/user/cd6010de851244008c4c89319c220700/following?limit=1`,
+    'search': `https://api.onepeloton.com/api/user/search?user_query=humantag&limit=5`,
+  }
+  const endpointResults: Record<string, number> = {}
+  for (const [name, url] of Object.entries(endpoints)) {
+    try {
+      const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' } })
+      endpointResults[name] = r.status
+    } catch { endpointResults[name] = -1 }
+  }
+
   // Also run through the exact same code path as the following endpoint
   let authStatus: string | null = null
   let followingCount: number | null = null
@@ -58,6 +73,7 @@ export async function GET(req: NextRequest) {
     token_length: token.length,
     updated_at: creds?.updated_at,
     iat, exp,
+    endpoint_results: endpointResults,
     peloton_direct_status: pelotonStatus,
     peloton_direct_error: pelotonError,
     auth_via_lib: authStatus,
