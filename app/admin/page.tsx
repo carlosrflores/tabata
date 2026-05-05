@@ -60,7 +60,7 @@ export default function AdminPage() {
   const loadFollowing = useCallback(async () => {
     setFollowingLoading(true)
     setFollowingError(null)
-    const res = await fetch('/api/peloton/following', {
+    const res = await fetch('/api/debug?mode=following', {
       headers: { Authorization: `Bearer ${secret}` },
     })
     if (res.ok) {

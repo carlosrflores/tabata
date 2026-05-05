@@ -1,20 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { authenticatePeloton, fetchFollowing } from '@/lib/peloton'
+import { authenticatePeloton, fetchAllFollowing, fetchFollowing } from '@/lib/peloton'
 
 export const dynamic = 'force-dynamic'
 
-// Temporary debug endpoint — returns first 40 chars of stored token and its updated_at.
-// DELETE after debugging is done.
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
   const db = getSupabaseAdmin()
-  const { data: owner } = await db.from('members').select('id, name').eq('is_owner', true).single()
+  const { data: owner } = await db.from('members').select('id, name, peloton_user_id').eq('is_owner', true).single()
   const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token, updated_at').eq('member_id', owner?.id ?? '').single()
   const token = creds?.peloton_bearer_token ?? ''
+
+  // ?mode=following — return the full following list for the admin dropdown
+  if (req.nextUrl.searchParams.get('mode') === 'following') {
+    if (!token || !owner?.peloton_user_id) {
+      return NextResponse.json({ users: [], message: 'Owner credentials or user ID not found' })
+    }
+    const { data: existingMembers } = await db.from('members').select('peloton_user_id')
+    const existingIds = new Set((existingMembers ?? []).map((m) => m.peloton_user_id as string))
+    try {
+      const session = await authenticatePeloton(token)
+      const allFollowing = await fetchAllFollowing(session)
+      const available = allFollowing.filter((u) => u.id && !existingIds.has(u.id))
+      return NextResponse.json({ users: available })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+
+  // Default: diagnostic info
   const parts = token.split('.')
   let iat = null, exp = null
   try {
@@ -22,16 +41,12 @@ export async function GET(req: NextRequest) {
     iat = payload.iat
     exp = payload.exp
   } catch { /* ignore */ }
-  // Test the token live against Peloton from this server
+
   let pelotonStatus: number | null = null
   let pelotonError: string | null = null
   try {
     const r = await fetch('https://api.onepeloton.com/api/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Peloton-Platform': 'web',
-        'Accept': 'application/json',
-      },
+      headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' },
       cache: 'no-store',
     })
     pelotonStatus = r.status
@@ -40,12 +55,12 @@ export async function GET(req: NextRequest) {
     pelotonError = e instanceof Error ? e.message : String(e)
   }
 
-  // Test other Peloton endpoints from this server
+  const userId = owner?.peloton_user_id ?? 'cd6010de851244008c4c89319c220700'
   const endpoints: Record<string, string> = {
     'me': 'https://api.onepeloton.com/api/me',
-    'workouts': `https://api.onepeloton.com/api/user/${token ? 'cd6010de851244008c4c89319c220700' : ''}/workouts?limit=1`,
-    'following_1': `https://api.onepeloton.com/api/user/cd6010de851244008c4c89319c220700/following?limit=1&page=0`,
-    'following_100': `https://api.onepeloton.com/api/user/cd6010de851244008c4c89319c220700/following?limit=100&page=0`,
+    'workouts': `https://api.onepeloton.com/api/user/${userId}/workouts?limit=1`,
+    'following_1': `https://api.onepeloton.com/api/user/${userId}/following?limit=1&page=0`,
+    'following_100': `https://api.onepeloton.com/api/user/${userId}/following?limit=100&page=0`,
     'search': `https://api.onepeloton.com/api/user/search?user_query=humantag&limit=5`,
   }
   const endpointResults: Record<string, number> = {}
@@ -56,7 +71,6 @@ export async function GET(req: NextRequest) {
     } catch { endpointResults[name] = -1 }
   }
 
-  // Also run through the exact same code path as the following endpoint
   let authStatus: string | null = null
   let followingCount: number | null = null
   let authError: string | null = null
