@@ -39,12 +39,28 @@ export async function GET(req: NextRequest) {
 
   const existingIds = new Set((existingMembers ?? []).map((m) => m.peloton_user_id as string))
 
+  const userId = owner.peloton_user_id as string
+  const token = ownerCreds.peloton_bearer_token
+
+  // tmp: raw fetch to isolate where the 401 comes from in this route
+  const rawUrl = `https://api.onepeloton.com/api/user/${userId}/following?limit=5&page=0`
+  const rawRes = await fetch(rawUrl, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' },
+  })
+  if (!rawRes.ok) {
+    const body = await rawRes.text()
+    return NextResponse.json({
+      error: `raw fetch failed (${rawRes.status})`,
+      url: rawUrl,
+      userId,
+      token_prefix: token.slice(0, 20),
+      body: body.slice(0, 200),
+    }, { status: 500 })
+  }
+
   // Build the session directly from stored data — no need to call /api/me
   // since we already have the owner's Peloton user ID in the members table.
-  const session = {
-    token: ownerCreds.peloton_bearer_token,
-    userId: owner.peloton_user_id as string,
-  }
+  const session = { token, userId }
 
   try {
     const allFollowing = await fetchAllFollowing(session)
