@@ -38,19 +38,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ?mode=test-workouts — test the exact fetchWorkoutList URL from within this handler
+  // ?mode=test-workouts — probe multiple workout URL variations to isolate 401 cause
   if (mode === 'test-workouts') {
     const { data: owner } = await db.from('members').select('id, peloton_user_id').eq('is_owner', true).single()
     const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token').eq('member_id', owner?.id ?? '').single()
     const token = creds?.peloton_bearer_token ?? ''
     const userId = owner?.peloton_user_id ?? ''
-    const url = `https://api.onepeloton.com/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=20&page=0&sort_by=-created`
-    const r = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' },
-      cache: 'no-store',
-    })
-    const body = await r.text()
-    return NextResponse.json({ status: r.status, url, token_prefix: token.slice(0, 20), body_prefix: body.slice(0, 200) })
+    const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
+    const tests: Record<string, string> = {
+      me: `https://api.onepeloton.com/api/me`,
+      workouts_plain_1: `https://api.onepeloton.com/api/user/${userId}/workouts?limit=1`,
+      workouts_plain_20: `https://api.onepeloton.com/api/user/${userId}/workouts?limit=20`,
+      workouts_joins_1: `https://api.onepeloton.com/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=1&page=0&sort_by=-created`,
+      workouts_joins_20: `https://api.onepeloton.com/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=20&page=0&sort_by=-created`,
+    }
+    const results: Record<string, { status: number; body: string }> = {}
+    for (const [name, url] of Object.entries(tests)) {
+      try {
+        const r = await fetch(url, { headers: hdrs, cache: 'no-store' })
+        const body = await r.text()
+        results[name] = { status: r.status, body: body.slice(0, 150) }
+      } catch (e) {
+        results[name] = { status: -1, body: String(e) }
+      }
+    }
+    return NextResponse.json({ token_prefix: token.slice(0, 20), token_length: token.length, results })
   }
 
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
