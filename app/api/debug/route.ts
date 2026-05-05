@@ -38,6 +38,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ?mode=test-workouts — test the exact fetchWorkoutList URL from within this handler
+  if (mode === 'test-workouts') {
+    const { data: owner } = await db.from('members').select('id, peloton_user_id').eq('is_owner', true).single()
+    const { data: creds } = await db.from('member_credentials').select('peloton_bearer_token').eq('member_id', owner?.id ?? '').single()
+    const token = creds?.peloton_bearer_token ?? ''
+    const userId = owner?.peloton_user_id ?? ''
+    const url = `https://api.onepeloton.com/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=20&page=0&sort_by=-created`
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' },
+      cache: 'no-store',
+    })
+    const body = await r.text()
+    return NextResponse.json({ status: r.status, url, token_prefix: token.slice(0, 20), body_prefix: body.slice(0, 200) })
+  }
+
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
   if (mode === 'sync') {
     try {
