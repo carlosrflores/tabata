@@ -132,10 +132,15 @@ async function ensureRidesCached(
   session: PelotonSession,
   summaries: PelotonWorkoutSummary[]
 ): Promise<Set<string>> {
+  // Peloton emits this sentinel ride id for class-less sessions (e.g. "Just
+  // Ride", scenic rides). Fetching it 404s; filter it upfront so the log
+  // stays clean. The owning workout still gets ride_id=null safely.
+  const SENTINEL_RIDE_ID = '00000000000000000000000000000000'
+
   const rideIds = new Set<string>()
   for (const s of summaries) {
     const id = s.ride?.id
-    if (id) rideIds.add(id)
+    if (id && id !== SENTINEL_RIDE_ID) rideIds.add(id)
   }
   if (rideIds.size === 0) return new Set()
 
