@@ -336,7 +336,7 @@ export async function fetchRide(
 export async function fetchNewWorkouts(
   session: PelotonSession,
   knownIds: Set<string>,
-  maxPages = 50,
+  maxPages = 10,
   targetUserId?: string
 ): Promise<PelotonWorkoutSummary[]> {
   const newWorkouts: PelotonWorkoutSummary[] = []
