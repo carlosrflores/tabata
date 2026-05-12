@@ -1,16 +1,18 @@
 // Dynamic Open Graph / Twitter Card image for a ride.
 //
 // Rendered on demand by Next.js when a preview crawler (iMessage, Slack,
-// Twitter, etc.) hits /rides/<id>. Renders the group's best performance
-// stats — similar in spirit to the rich preview the Peloton app sends.
+// Twitter, etc.) hits /rides/<id>. The class image fills the background;
+// the group's best performance stats sit overlaid on the left. Title and
+// instructor are intentionally NOT drawn on the image — iMessage shows
+// the page title and host below the card anyway, so duplicating them on
+// the image just collides with the stats column on short rides.
 //
-// Re-renders at most every 10 minutes so the preview updates as group bests
-// change without hammering Supabase on every crawler hit.
+// Re-renders at most every 10 minutes so the preview updates as group
+// bests change without hammering Supabase on every crawler hit.
 //
-// IMPORTANT: Satori (under next/og) silently fails when text is a direct
-// child of a display:flex element. Every leaf div that holds text here has
-// `display: flex` deliberately OMITTED. Flex layout is applied only to
-// containers that hold other elements.
+// IMPORTANT: Satori (under next/og) silently fails the entire render when
+// text is a direct child of a `display: flex` element. Every leaf div
+// that holds text here deliberately OMITS `display: flex`.
 
 import { ImageResponse } from 'next/og'
 import { getSupabaseAdmin } from '@/lib/supabase'
@@ -46,13 +48,35 @@ function fmtFloat(n: number | null | undefined, digits = 2): string | null {
   return n.toFixed(digits)
 }
 
+// Fetch the class image as an inline data URL so Satori never needs to
+// fetch from the network during the render. Fail soft on any error so
+// the rest of the preview still renders cleanly.
+async function tryFetchImageDataUrl(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 3000)
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(t)
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type') ?? 'image/png'
+    const buf = await res.arrayBuffer()
+    if (buf.byteLength > 1_500_000) return null
+    let binary = ''
+    const bytes = new Uint8Array(buf)
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return `data:${contentType};base64,${btoa(binary)}`
+  } catch {
+    return null
+  }
+}
+
 export default async function RideOgImage({
   params,
 }: {
   params: { ride_id: string }
 }) {
-  // Belt-and-suspenders error handling so even a Supabase outage produces
-  // a readable preview instead of an empty PNG.
   let ride: RideRow | null = null
   let best: BestRow | null = null
   try {
@@ -74,11 +98,9 @@ export default async function RideOgImage({
     ride = rideRes.data
     best = bestRes.data
   } catch {
-    // fall through with ride/best null
+    // ride / best stay null; fallback preview renders below.
   }
 
-  const title = ride?.title ?? 'Tabata Tuesday ride'
-  const instructor = ride?.instructor_name
   const bestName = best?.member_name
 
   const stats: Array<{ value: string; label: string }> = []
@@ -91,6 +113,10 @@ export default async function RideOgImage({
   if (miles) stats.push({ value: miles, label: 'MILES' })
   if (cals) stats.push({ value: cals, label: 'CALORIES' })
 
+  const bgDataUrl = ride?.image_url
+    ? await tryFetchImageDataUrl(ride.image_url)
+    : null
+
   return new ImageResponse(
     (
       <div
@@ -98,125 +124,141 @@ export default async function RideOgImage({
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          padding: '60px 70px',
+          position: 'relative',
           background:
             'linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 50%, #0a0a0a 100%)',
           color: 'white',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {/* Top row: branding (left) + group-best name (right) */}
+        {bgDataUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={bgDataUrl}
+            alt=""
+            width={1200}
+            height={630}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 1200,
+              height: 630,
+              objectFit: 'cover',
+            }}
+          />
+        )}
+
+        {/* Dark gradient overlay for legibility against the class image */}
+        {bgDataUrl && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              background:
+                'linear-gradient(110deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.20) 100%)',
+            }}
+          />
+        )}
+
+        {/* Foreground content (relative so it stacks above the bg img) */}
         <div
           style={{
+            position: 'relative',
             display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            flexDirection: 'column',
+            width: 1200,
+            height: 630,
+            padding: '60px 70px',
           }}
         >
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 600,
-              letterSpacing: 4,
-              color: '#c4a4ff',
-            }}
-          >
-            TABATA TUESDAY
-          </div>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 500,
-              letterSpacing: 1,
-              color: 'rgba(255,255,255,0.75)',
-            }}
-          >
-            {bestName ? `GROUP BEST · ${bestName.toUpperCase()}` : ''}
-          </div>
-        </div>
-
-        {/* Stats column */}
-        {stats.length > 0 ? (
+          {/* Top row: branding (left) + group-best name (right) */}
           <div
             style={{
               display: 'flex',
-              flexDirection: 'column',
-              marginTop: 40,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
-            {stats.map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  marginBottom: 18,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 72,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}
-                >
-                  {s.value}
-                </div>
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 600,
-                    letterSpacing: 2,
-                    color: 'rgba(255,255,255,0.7)',
-                    marginTop: 4,
-                  }}
-                >
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            style={{
-              marginTop: 60,
-              fontSize: 26,
-              color: 'rgba(255,255,255,0.7)',
-            }}
-          >
-            No one in the group has taken this ride yet.
-          </div>
-        )}
-
-        {/* Bottom block: title + instructor */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            marginTop: 'auto',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 52,
-              fontWeight: 700,
-              lineHeight: 1.05,
-            }}
-          >
-            {title}
-          </div>
-          {instructor && (
             <div
               style={{
-                fontSize: 30,
-                fontWeight: 500,
-                color: 'rgba(255,255,255,0.8)',
-                marginTop: 10,
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: 4,
+                color: '#c4a4ff',
               }}
             >
-              with {instructor}
+              TABATA TUESDAY
+            </div>
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 500,
+                letterSpacing: 1,
+                color: 'rgba(255,255,255,0.85)',
+              }}
+            >
+              {bestName ? `GROUP BEST · ${bestName.toUpperCase()}` : ''}
+            </div>
+          </div>
+
+          {/* Stats column — centered vertically in remaining space */}
+          {stats.length > 0 ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                marginTop: 'auto',
+                marginBottom: 'auto',
+              }}
+            >
+              {stats.map((s) => (
+                <div
+                  key={s.label}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    marginBottom: 22,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 84,
+                      fontWeight: 700,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {s.value}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      letterSpacing: 2,
+                      color: 'rgba(255,255,255,0.7)',
+                      marginTop: 6,
+                    }}
+                  >
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: 'auto',
+                marginBottom: 'auto',
+                fontSize: 28,
+                color: 'rgba(255,255,255,0.75)',
+              }}
+            >
+              No one in the group has taken this ride yet.
             </div>
           )}
         </div>
