@@ -290,6 +290,11 @@ export async function fetchRide(
 // Fetch all NEW workouts for a user (stops when it hits known IDs).
 // knownIds is the set of peloton_workout_ids already in the database.
 // Pass targetUserId to fetch another user's workouts using the session's token.
+//
+// When we encounter a known ID we keep scanning the current page (Peloton can
+// return records slightly out of order during eventual consistency, so a
+// newer-but-unsynced workout may appear after a known one) and then fetch ONE
+// extra page before stopping. Bounded by maxPages so this can never run away.
 export async function fetchNewWorkouts(
   session: PelotonSession,
   knownIds: Set<string>,
@@ -298,25 +303,38 @@ export async function fetchNewWorkouts(
 ): Promise<PelotonWorkoutSummary[]> {
   const newWorkouts: PelotonWorkoutSummary[] = []
 
+  const collect = (workouts: PelotonWorkoutSummary[]) => {
+    for (const w of workouts) {
+      if (!knownIds.has(w.id) && w.status === 'COMPLETE') {
+        newWorkouts.push(w)
+      }
+    }
+  }
+
   for (let page = 0; page < maxPages; page++) {
     const { workouts } = await fetchWorkoutList(session, page, 20, targetUserId)
 
     if (workouts.length === 0) break
 
-    let foundExisting = false
-    for (const workout of workouts) {
-      if (knownIds.has(workout.id)) {
-        foundExisting = true
-        break
-      }
-      // Only sync completed workouts
-      if (workout.status === 'COMPLETE') {
-        newWorkouts.push(workout)
-      }
-    }
+    const foundExisting = workouts.some((w) => knownIds.has(w.id))
+    collect(workouts)
 
-    // Once we hit a workout we already have, no need to paginate further
-    if (foundExisting) break
+    if (foundExisting) {
+      // Lookahead one page: insurance against Peloton's eventual consistency
+      // placing a newer workout below a known one across the page boundary.
+      const lookahead = page + 1
+      if (lookahead < maxPages) {
+        await new Promise((r) => setTimeout(r, 300))
+        const { workouts: extra } = await fetchWorkoutList(
+          session,
+          lookahead,
+          20,
+          targetUserId
+        )
+        collect(extra)
+      }
+      break
+    }
 
     // Rate-limit courtesy: small delay between pages
     if (page < maxPages - 1) {
