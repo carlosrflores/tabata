@@ -2,10 +2,7 @@
 //
 // Rendered on demand by Next.js when a preview crawler (iMessage, Slack,
 // Twitter, etc.) hits /rides/<id>. The class image fills the background;
-// the group's best performance stats sit overlaid on the left. Title and
-// instructor are intentionally NOT drawn on the image — iMessage shows
-// the page title and host below the card anyway, so duplicating them on
-// the image just collides with the stats column on short rides.
+// the group's best performance stats sit overlaid on the left.
 //
 // Re-renders at most every 10 minutes so the preview updates as group
 // bests change without hammering Supabase on every crawler hit.
@@ -48,30 +45,6 @@ function fmtFloat(n: number | null | undefined, digits = 2): string | null {
   return n.toFixed(digits)
 }
 
-// Fetch the class image as an inline data URL so Satori never needs to
-// fetch from the network during the render. Fail soft on any error so
-// the rest of the preview still renders cleanly.
-async function tryFetchImageDataUrl(url: string): Promise<string | null> {
-  try {
-    const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 3000)
-    const res = await fetch(url, { signal: controller.signal })
-    clearTimeout(t)
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') ?? 'image/png'
-    const buf = await res.arrayBuffer()
-    if (buf.byteLength > 1_500_000) return null
-    let binary = ''
-    const bytes = new Uint8Array(buf)
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return `data:${contentType};base64,${btoa(binary)}`
-  } catch {
-    return null
-  }
-}
-
 export default async function RideOgImage({
   params,
 }: {
@@ -102,6 +75,7 @@ export default async function RideOgImage({
   }
 
   const bestName = best?.member_name
+  const bgUrl = ride?.image_url ?? null
 
   const stats: Array<{ value: string; label: string }> = []
   const output = fmtInt(best?.total_output_kj)
@@ -112,10 +86,6 @@ export default async function RideOgImage({
   if (watts) stats.push({ value: watts, label: 'AVG WATTS' })
   if (miles) stats.push({ value: miles, label: 'MILES' })
   if (cals) stats.push({ value: cals, label: 'CALORIES' })
-
-  const bgDataUrl = ride?.image_url
-    ? await tryFetchImageDataUrl(ride.image_url)
-    : null
 
   return new ImageResponse(
     (
@@ -131,10 +101,12 @@ export default async function RideOgImage({
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {bgDataUrl && (
+        {/* Background class image — Satori fetches it inline. If the
+            fetch fails Satori falls back to the gradient on the parent. */}
+        {bgUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={bgDataUrl}
+            src={bgUrl}
             alt=""
             width={1200}
             height={630}
@@ -149,8 +121,8 @@ export default async function RideOgImage({
           />
         )}
 
-        {/* Dark gradient overlay for legibility against the class image */}
-        {bgDataUrl && (
+        {/* Dark gradient overlay for legibility against the photo */}
+        {bgUrl && (
           <div
             style={{
               position: 'absolute',
@@ -160,12 +132,12 @@ export default async function RideOgImage({
               bottom: 0,
               display: 'flex',
               background:
-                'linear-gradient(110deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.20) 100%)',
+                'linear-gradient(110deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.25) 100%)',
             }}
           />
         )}
 
-        {/* Foreground content (relative so it stacks above the bg img) */}
+        {/* Foreground (positioned relative so it stacks above the bg) */}
         <div
           style={{
             position: 'relative',
@@ -173,7 +145,7 @@ export default async function RideOgImage({
             flexDirection: 'column',
             width: 1200,
             height: 630,
-            padding: '60px 70px',
+            padding: '50px 70px',
           }}
         >
           {/* Top row: branding (left) + group-best name (right) */}
@@ -183,6 +155,7 @@ export default async function RideOgImage({
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
+              marginBottom: 56,
             }}
           >
             <div
@@ -200,21 +173,20 @@ export default async function RideOgImage({
                 fontSize: 18,
                 fontWeight: 500,
                 letterSpacing: 1,
-                color: 'rgba(255,255,255,0.85)',
+                color: 'rgba(255,255,255,0.9)',
+                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
               }}
             >
               {bestName ? `GROUP BEST · ${bestName.toUpperCase()}` : ''}
             </div>
           </div>
 
-          {/* Stats column — centered vertically in remaining space */}
+          {/* Stats column */}
           {stats.length > 0 ? (
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                marginTop: 'auto',
-                marginBottom: 'auto',
               }}
             >
               {stats.map((s) => (
@@ -223,25 +195,26 @@ export default async function RideOgImage({
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    marginBottom: 22,
+                    marginBottom: 18,
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 84,
+                      fontSize: 72,
                       fontWeight: 700,
                       lineHeight: 1,
+                      textShadow: '0 2px 6px rgba(0,0,0,0.6)',
                     }}
                   >
                     {s.value}
                   </div>
                   <div
                     style={{
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: 600,
                       letterSpacing: 2,
-                      color: 'rgba(255,255,255,0.7)',
-                      marginTop: 6,
+                      color: 'rgba(255,255,255,0.75)',
+                      marginTop: 4,
                     }}
                   >
                     {s.label}
@@ -252,10 +225,9 @@ export default async function RideOgImage({
           ) : (
             <div
               style={{
-                marginTop: 'auto',
-                marginBottom: 'auto',
                 fontSize: 28,
-                color: 'rgba(255,255,255,0.75)',
+                color: 'rgba(255,255,255,0.8)',
+                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
               }}
             >
               No one in the group has taken this ride yet.
