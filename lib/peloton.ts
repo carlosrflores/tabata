@@ -5,6 +5,7 @@ import type {
 } from '@/types'
 
 const PELOTON_BASE = 'https://api.onepeloton.com'
+const PELOTON_AUTH_BASE = 'https://auth.onepeloton.com'
 
 export interface PelotonSession {
   token: string
@@ -26,6 +27,61 @@ function pelotonHeaders(token: string): Record<string, string> {
     'Authorization': `Bearer ${token}`,
     'Peloton-Platform': 'web',
     'Accept': 'application/json',
+  }
+}
+
+export interface RefreshedPelotonTokens {
+  accessToken: string
+  refreshToken: string  // may be the same as input if Auth0 didn't rotate it
+  expiresAt: string     // ISO timestamp computed from expires_in
+}
+
+// Exchange a refresh token for a fresh access token via Auth0.
+// Throws on any non-2xx response or missing access_token.
+//
+// Auth0 rotates refresh tokens by default; the caller MUST persist whatever
+// comes back in `refreshToken`. If the response unexpectedly omits one, we
+// fall back to the input refresh token so the caller can keep using it.
+export async function refreshPelotonToken(
+  refreshToken: string,
+  clientId: string
+): Promise<RefreshedPelotonTokens> {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: clientId,
+    refresh_token: refreshToken,
+  })
+
+  const res = await fetch(`${PELOTON_AUTH_BASE}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json',
+    },
+    body,
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(
+      `Peloton token refresh failed (${res.status}): ${text.slice(0, 200)}`
+    )
+  }
+
+  const data = await res.json()
+  if (typeof data.access_token !== 'string' || !data.access_token) {
+    throw new Error('Peloton token refresh response missing access_token')
+  }
+
+  const expiresInSec = typeof data.expires_in === 'number' ? data.expires_in : 0
+  return {
+    accessToken: data.access_token,
+    refreshToken:
+      typeof data.refresh_token === 'string' && data.refresh_token
+        ? data.refresh_token
+        : refreshToken,
+    expiresAt: new Date(Date.now() + expiresInSec * 1000).toISOString(),
   }
 }
 

@@ -7,6 +7,7 @@ import {
   fetchRide,
   extractAvgMetric,
   extractSummaryMetric,
+  refreshPelotonToken,
 } from '@/lib/peloton'
 import type { PelotonSession } from '@/lib/peloton'
 import type {
@@ -19,7 +20,83 @@ import type {
 // Ride metadata rarely changes after the original air date.
 const RIDE_CACHE_TTL_DAYS = 30
 
+// Refresh the access token if it expires within this window. A sync run
+// takes minutes, the token has ~48h of life — a one-minute buffer is plenty.
+const REFRESH_BUFFER_MS = 60 * 1000
+
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>
+
+interface StoredCreds {
+  peloton_bearer_token: string | null
+  peloton_refresh_token: string | null
+  peloton_token_expires_at: string | null
+  peloton_auth0_client_id: string | null
+}
+
+// Read a member's stored credentials, refreshing the access token if it's
+// within REFRESH_BUFFER_MS of expiry (or already expired) and we have both
+// the refresh token and the Auth0 client_id needed to do so. Persists the
+// new tokens back to member_credentials before returning.
+//
+// Falls back to the stored access token if the refresh call fails — the
+// stored token may still be valid for a few seconds, and if not, the next
+// Peloton API call will 401 and surface through the existing error paths.
+//
+// Pre-refresh-token rows (refresh_token / client_id NULL) skip the refresh
+// path entirely and return whatever access token is stored. This is the
+// graceful-fallback that lets the sync keep running before bootstrap is
+// updated to capture refresh tokens.
+async function getFreshPelotonSession(
+  db: SupabaseAdmin,
+  memberId: string,
+  pelotonUserId: string
+): Promise<PelotonSession | null> {
+  const { data: creds } = await db
+    .from('member_credentials')
+    .select(
+      'peloton_bearer_token, peloton_refresh_token, peloton_token_expires_at, peloton_auth0_client_id'
+    )
+    .eq('member_id', memberId)
+    .single<StoredCreds>()
+
+  if (!creds?.peloton_bearer_token) return null
+
+  // Prefer the stored expires_at; for rows written before the auth-refresh
+  // migration it's null, so decode from the JWT instead.
+  const expiresAtIso =
+    creds.peloton_token_expires_at ?? decodeJwtExp(creds.peloton_bearer_token)
+  const expiresAtMs = expiresAtIso ? new Date(expiresAtIso).getTime() : null
+  const needsRefresh =
+    expiresAtMs != null && expiresAtMs - Date.now() < REFRESH_BUFFER_MS
+
+  if (
+    needsRefresh &&
+    creds.peloton_refresh_token &&
+    creds.peloton_auth0_client_id
+  ) {
+    try {
+      const fresh = await refreshPelotonToken(
+        creds.peloton_refresh_token,
+        creds.peloton_auth0_client_id
+      )
+      await db
+        .from('member_credentials')
+        .update({
+          peloton_bearer_token: fresh.accessToken,
+          peloton_refresh_token: fresh.refreshToken,
+          peloton_token_expires_at: fresh.expiresAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('member_id', memberId)
+      return createSession(fresh.accessToken, pelotonUserId)
+    } catch (e) {
+      console.error(`Token refresh failed for member ${memberId}:`, e)
+      // Fall through and use the stored access token below.
+    }
+  }
+
+  return createSession(creds.peloton_bearer_token, pelotonUserId)
+}
 
 function transformRide(ride: PelotonRide) {
   return {
@@ -161,18 +238,18 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
 
   // Try the member's own stored token first; fall back to the owner's token.
   // This allows friends to be added by username alone without providing their own token.
+  // getFreshPelotonSession handles the refresh-token dance internally.
   let session: PelotonSession
   const targetUserId = member.peloton_user_id
 
-  const { data: creds } = await db
-    .from('member_credentials')
-    .select('peloton_bearer_token')
-    .eq('member_id', memberId)
-    .single()
+  const ownSession = await getFreshPelotonSession(
+    db,
+    memberId,
+    member.peloton_user_id ?? ''
+  )
 
-  if (creds?.peloton_bearer_token) {
-    // Member has their own token — use it directly. targetUserId routes the API call.
-    session = createSession(creds.peloton_bearer_token, member.peloton_user_id ?? '')
+  if (ownSession) {
+    session = ownSession
   } else {
     const { data: owner } = await db
       .from('members')
@@ -182,16 +259,17 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     if (!owner) {
       return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No credentials and no owner found' }
     }
-    const { data: ownerCreds } = await db
-      .from('member_credentials')
-      .select('peloton_bearer_token')
-      .eq('member_id', owner.id)
-      .single()
-    if (!ownerCreds?.peloton_bearer_token) {
+    const ownerSession = await getFreshPelotonSession(
+      db,
+      owner.id,
+      owner.peloton_user_id ?? ''
+    )
+    if (!ownerSession) {
       return { memberId, memberName: member.name, workoutsAdded: 0, error: 'Owner has no credentials stored' }
     }
-    // Use owner's token with owner's userId; targetUserId routes the workout fetch to the right member.
-    session = createSession(ownerCreds.peloton_bearer_token, owner.peloton_user_id ?? '')
+    // Owner's token with owner's userId; targetUserId routes the workout fetch
+    // to the right member via fetchNewWorkouts.
+    session = ownerSession
   }
 
   const { data: logEntry } = await db
