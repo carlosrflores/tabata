@@ -264,16 +264,120 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
   }
 }
 
-export async function syncAllMembers(): Promise<SyncResult[]> {
+export type SyncTrigger = 'cron' | 'manual' | 'backfill'
+
+// Decode the `exp` claim from a Peloton JWT and return it as ISO.
+// Returns null on any parse failure — never throws.
+function decodeJwtExp(token: string): string | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const payload = JSON.parse(atob(parts[1]))
+    if (typeof payload.exp !== 'number') return null
+    return new Date(payload.exp * 1000).toISOString()
+  } catch {
+    return null
+  }
+}
+
+async function fetchOwnerTokenExp(db: SupabaseAdmin): Promise<string | null> {
+  const { data: owner } = await db
+    .from('members')
+    .select('id')
+    .eq('is_owner', true)
+    .single()
+  if (!owner) return null
+  const { data: creds } = await db
+    .from('member_credentials')
+    .select('peloton_bearer_token')
+    .eq('member_id', owner.id)
+    .single()
+  if (!creds?.peloton_bearer_token) return null
+  return decodeJwtExp(creds.peloton_bearer_token)
+}
+
+export async function syncAllMembers(
+  trigger: SyncTrigger = 'manual'
+): Promise<SyncResult[]> {
   const db = getSupabaseAdmin()
-  const { data: members, error } = await db.from('members').select('id').eq('active', true)
-  if (error || !members) return []
+
+  const tokenExpiresAt = await fetchOwnerTokenExp(db).catch(() => null)
+
+  // Open a sync_runs row. Observability must never block sync work, so
+  // failures here are logged but not propagated.
+  let runId: string | null = null
+  try {
+    const { data: run } = await db
+      .from('sync_runs')
+      .insert({ trigger, status: 'running', token_expires_at: tokenExpiresAt })
+      .select('id')
+      .single()
+    runId = run?.id ?? null
+  } catch (e) {
+    console.error('Failed to insert sync_runs row:', e)
+  }
+
+  const finalize = async (
+    status: 'success' | 'partial' | 'failed',
+    membersProcessed: number,
+    membersFailed: number,
+    workoutsAdded: number,
+    lastError: string | null
+  ) => {
+    if (!runId) return
+    try {
+      await db
+        .from('sync_runs')
+        .update({
+          status,
+          finished_at: new Date().toISOString(),
+          members_processed: membersProcessed,
+          members_failed: membersFailed,
+          workouts_added: workoutsAdded,
+          last_error: lastError ? lastError.slice(0, 2000) : null,
+        })
+        .eq('id', runId)
+    } catch (e) {
+      console.error('Failed to update sync_runs row:', e)
+    }
+  }
+
+  const { data: members, error } = await db
+    .from('members')
+    .select('id')
+    .eq('active', true)
+  if (error || !members) {
+    const msg = error
+      ? `Member query failed: ${error.message}`
+      : 'Member query returned no data'
+    await finalize('failed', 0, 0, 0, msg)
+    return []
+  }
 
   const results: SyncResult[] = []
+  let workoutsTotal = 0
+  let failed = 0
+  let firstError: string | null = null
+
   for (const member of members) {
     const result = await syncMember(member.id)
     results.push(result)
+    workoutsTotal += result.workoutsAdded
+    if (result.error) {
+      failed++
+      if (!firstError) firstError = `${result.memberName}: ${result.error}`
+    }
     await new Promise((r) => setTimeout(r, 1000))
   }
+
+  // Empty member list counts as success (nothing to fail).
+  const status =
+    failed === 0
+      ? 'success'
+      : failed >= members.length
+      ? 'failed'
+      : 'partial'
+
+  await finalize(status, members.length, failed, workoutsTotal, firstError)
   return results
 }

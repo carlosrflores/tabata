@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { authenticatePeloton, fetchAllFollowing, fetchFollowing } from '@/lib/peloton'
-import { syncMember, syncAllMembers } from '@/lib/sync'
+import { syncMember, syncAllMembers, type SyncTrigger } from '@/lib/sync'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'edge'
@@ -131,9 +131,15 @@ export async function GET(req: NextRequest) {
   }
 
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
+  // ?trigger=cron|manual|backfill — recorded on the sync_runs row. Defaults to 'manual'.
   if (mode === 'sync') {
+    const triggerParam = req.nextUrl.searchParams.get('trigger')
+    const trigger: SyncTrigger =
+      triggerParam === 'cron' || triggerParam === 'manual' || triggerParam === 'backfill'
+        ? triggerParam
+        : 'manual'
     try {
-      const results = await syncAllMembers()
+      const results = await syncAllMembers(trigger)
       const totalAdded = results.reduce((sum, r) => sum + r.workoutsAdded, 0)
       return NextResponse.json({ results, total_workouts_added: totalAdded, synced_at: new Date().toISOString() })
     } catch (err) {

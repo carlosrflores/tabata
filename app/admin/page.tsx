@@ -149,7 +149,7 @@ export default function AdminPage() {
 
   async function triggerSync(memberId?: string) {
     setSyncStatus('Syncing...')
-    const url = memberId ? `/api/debug?mode=sync-member&memberId=${memberId}` : '/api/debug?mode=sync'
+    const url = memberId ? `/api/debug?mode=sync-member&memberId=${memberId}` : '/api/debug?mode=sync&trigger=manual'
     const res = await fetch(url, { headers: { Authorization: `Bearer ${secret}` } })
     const data = await res.json()
 
