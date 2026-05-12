@@ -7,6 +7,36 @@ import type {
 const PELOTON_BASE = 'https://api.onepeloton.com'
 const PELOTON_AUTH_BASE = 'https://auth.onepeloton.com'
 
+// Wraps fetch with: 5xx retry (exp backoff + jitter), 4xx returned as-is,
+// network errors retried up to `retries` times. Used for every call against
+// api.onepeloton.com and auth.onepeloton.com.
+//
+// 5xx is almost always a transient Peloton-backend blip (502/503). 4xx is
+// not retryable — it indicates auth or bad-request issues that need caller
+// attention.
+async function pelotonFetch(
+  url: string,
+  init: RequestInit & { retries?: number } = {}
+): Promise<Response> {
+  const { retries = 2, ...rest } = init
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, rest)
+      if (res.status < 500) return res
+      if (attempt === retries) return res
+    } catch (e) {
+      lastErr = e
+      if (attempt === retries) throw e
+    }
+    // Backoff: 500ms, 1500ms with up to 200ms of jitter.
+    const delayMs = 500 * Math.pow(3, attempt) + Math.floor(Math.random() * 200)
+    await new Promise((r) => setTimeout(r, delayMs))
+  }
+  // Unreachable: loop returns or throws on the last attempt.
+  throw lastErr ?? new Error('pelotonFetch: exhausted retries')
+}
+
 export interface PelotonSession {
   token: string
   userId: string
@@ -52,7 +82,7 @@ export async function refreshPelotonToken(
     refresh_token: refreshToken,
   })
 
-  const res = await fetch(`${PELOTON_AUTH_BASE}/oauth/token`, {
+  const res = await pelotonFetch(`${PELOTON_AUTH_BASE}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -97,7 +127,7 @@ export async function authenticatePeloton(
     ? bearerToken.slice(7)
     : bearerToken
 
-  const res = await fetch(`${PELOTON_BASE}/api/me`, {
+  const res = await pelotonFetch(`${PELOTON_BASE}/api/me`, {
     headers: pelotonHeaders(token),
     cache: 'no-store',
   })
@@ -136,7 +166,7 @@ export async function fetchFollowing(
   page = 0,
   limit = 100
 ): Promise<{ users: PelotonFollowingUser[]; total: number }> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/user/${session.userId}/following?limit=${limit}&page=${page}`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -184,7 +214,7 @@ export async function fetchWorkoutList(
   const userId = targetUserId ?? session.userId
   const url = `${PELOTON_BASE}/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=${limit}&page=${page}&sort_by=-created`
 
-  const res = await fetch(url, {
+  const res = await pelotonFetch(url, {
     headers: pelotonHeaders(session.token),
     cache: 'no-store',
   })
@@ -206,7 +236,7 @@ export async function fetchWorkoutSummary(
   session: PelotonSession,
   workoutId: string
 ): Promise<PelotonWorkoutSummary> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/workout/${workoutId}?joins=ride,ride.instructor`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -223,7 +253,7 @@ export async function fetchWorkoutPerformance(
   session: PelotonSession,
   workoutId: string
 ): Promise<PelotonWorkoutPerformance> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/workout/${workoutId}/performance_graph?every_n=5`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -275,7 +305,7 @@ export async function fetchRide(
   session: PelotonSession,
   rideId: string
 ): Promise<PelotonRide> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/ride/${rideId}?joins=instructor`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
