@@ -2,11 +2,15 @@
 //
 // Rendered on demand by Next.js when a preview crawler (iMessage, Slack,
 // Twitter, etc.) hits /rides/<id>. Renders the group's best performance
-// stats over a dimmed version of the class image — same spirit as the
-// Peloton app's share card.
+// stats — similar in spirit to the rich preview the Peloton app sends.
 //
 // Re-renders at most every 10 minutes so the preview updates as group bests
 // change without hammering Supabase on every crawler hit.
+//
+// IMPORTANT: Satori (under next/og) silently fails when text is a direct
+// child of a display:flex element. Every leaf div that holds text here has
+// `display: flex` deliberately OMITTED. Flex layout is applied only to
+// containers that hold other elements.
 
 import { ImageResponse } from 'next/og'
 import { getSupabaseAdmin } from '@/lib/supabase'
@@ -47,9 +51,8 @@ export default async function RideOgImage({
 }: {
   params: { ride_id: string }
 }) {
-  // Fetch data with belt-and-suspenders error handling — if Supabase is
-  // unreachable or the row is missing, we still render a generic preview
-  // rather than failing the response.
+  // Belt-and-suspenders error handling so even a Supabase outage produces
+  // a readable preview instead of an empty PNG.
   let ride: RideRow | null = null
   let best: BestRow | null = null
   try {
@@ -71,7 +74,7 @@ export default async function RideOgImage({
     ride = rideRes.data
     best = bestRes.data
   } catch {
-    // ride / best stay null; we render the fallback preview.
+    // fall through with ride/best null
   }
 
   const title = ride?.title ?? 'Tabata Tuesday ride'
@@ -103,10 +106,11 @@ export default async function RideOgImage({
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {/* Top row: branding + group-best name */}
+        {/* Top row: branding (left) + group-best name (right) */}
         <div
           style={{
             display: 'flex',
+            flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
@@ -121,20 +125,16 @@ export default async function RideOgImage({
           >
             TABATA TUESDAY
           </div>
-          {bestName ? (
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 500,
-                letterSpacing: 1,
-                color: 'rgba(255,255,255,0.75)',
-              }}
-            >
-              GROUP BEST · {bestName.toUpperCase()}
-            </div>
-          ) : (
-            <div />
-          )}
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 500,
+              letterSpacing: 1,
+              color: 'rgba(255,255,255,0.75)',
+            }}
+          >
+            {bestName ? `GROUP BEST · ${bestName.toUpperCase()}` : ''}
+          </div>
         </div>
 
         {/* Stats column */}
@@ -157,7 +157,6 @@ export default async function RideOgImage({
               >
                 <div
                   style={{
-                    display: 'flex',
                     fontSize: 72,
                     fontWeight: 700,
                     lineHeight: 1,
@@ -167,7 +166,6 @@ export default async function RideOgImage({
                 </div>
                 <div
                   style={{
-                    display: 'flex',
                     fontSize: 18,
                     fontWeight: 600,
                     letterSpacing: 2,
@@ -183,7 +181,6 @@ export default async function RideOgImage({
         ) : (
           <div
             style={{
-              display: 'flex',
               marginTop: 60,
               fontSize: 26,
               color: 'rgba(255,255,255,0.7)',
@@ -203,7 +200,6 @@ export default async function RideOgImage({
         >
           <div
             style={{
-              display: 'flex',
               fontSize: 52,
               fontWeight: 700,
               lineHeight: 1.05,
@@ -214,7 +210,6 @@ export default async function RideOgImage({
           {instructor && (
             <div
               style={{
-                display: 'flex',
                 fontSize: 30,
                 fontWeight: 500,
                 color: 'rgba(255,255,255,0.8)',
