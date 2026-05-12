@@ -4,6 +4,7 @@
 // in parallel, then hands off to <RideDetailClient> for sortable interaction.
 
 import type { Metadata } from 'next';
+import { unstable_noStore as noStore } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { formatDuration, formatExactDate } from '@/lib/format';
@@ -58,6 +59,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function RideDetailPage({ params }: Props) {
+  // Opt out of Next.js Data Cache. `dynamic = 'force-dynamic'` is supposed
+  // to do this for fetch() calls, but supabase-js's underlying fetch was
+  // observed serving a stale 2-row snapshot of ride_comparison for ~hours
+  // after a newly-synced workout landed. noStore() is the documented
+  // escape hatch.
+  noStore();
+
   const rideId = params.ride_id;
   const db = getSupabaseAdmin();
 

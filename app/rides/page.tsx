@@ -5,6 +5,7 @@
 // Public read, matching the leaderboard's RLS pattern.
 
 import Link from 'next/link';
+import { unstable_noStore as noStore } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
   formatDuration,
@@ -17,6 +18,10 @@ import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const dynamic = 'force-dynamic';
 
 export default async function RidesIndexPage() {
+  // See ride detail page for the explanation — Next.js Data Cache was
+  // serving stale supabase-js fetch results despite force-dynamic.
+  noStore();
+
   const db = getSupabaseAdmin();
   const { data, error } = await db
     .from('ride_popularity')
