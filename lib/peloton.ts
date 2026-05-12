@@ -7,6 +7,14 @@ import type {
 const PELOTON_BASE = 'https://api.onepeloton.com'
 const PELOTON_AUTH_BASE = 'https://auth.onepeloton.com'
 
+// Fitness disciplines that expose /performance_graph endpoints. Today: just
+// cycling. Tread workouts also have a performance graph and will go in here
+// the day someone in the group buys one. Other disciplines (strength, yoga,
+// running) either don't have one or 404 — see fetchWorkoutPerformance.
+export const PERFORMANCE_GRAPH_DISCIPLINES: ReadonlySet<string> = new Set([
+  'cycling',
+])
+
 // Wraps fetch with: 5xx retry (exp backoff + jitter), 4xx returned as-is,
 // network errors retried up to `retries` times. Used for every call against
 // api.onepeloton.com and auth.onepeloton.com.

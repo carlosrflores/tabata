@@ -8,6 +8,7 @@ import {
   extractAvgMetric,
   extractSummaryMetric,
   refreshPelotonToken,
+  PERFORMANCE_GRAPH_DISCIPLINES,
 } from '@/lib/peloton'
 import type { PelotonSession } from '@/lib/peloton'
 import type {
@@ -303,7 +304,7 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
       try {
         const summary = await fetchWorkoutSummary(session, workout.id)
         let perf: PelotonWorkoutPerformance = { duration: 0, average_summaries: [], summaries: [] }
-        if (workout.fitness_discipline === 'cycling') {
+        if (PERFORMANCE_GRAPH_DISCIPLINES.has(workout.fitness_discipline)) {
           perf = await fetchWorkoutPerformance(session, workout.id)
         }
         fetched.push({ summary, perf })

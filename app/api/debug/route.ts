@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { authenticatePeloton, fetchAllFollowing, fetchFollowing } from '@/lib/peloton'
+import {
+  authenticatePeloton,
+  fetchAllFollowing,
+  fetchFollowing,
+  PERFORMANCE_GRAPH_DISCIPLINES,
+} from '@/lib/peloton'
 import { syncMember, syncAllMembers, type SyncTrigger } from '@/lib/sync'
 
 export const dynamic = 'force-dynamic'
@@ -92,10 +97,11 @@ export async function GET(req: NextRequest) {
     const token = creds?.peloton_bearer_token ?? ''
     const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
 
-    // Fetch all cycling workouts at this page — regardless of whether already backfilled
+    // Fetch all performance-graph-eligible workouts at this page — regardless
+    // of whether already backfilled.
     const { data: rows } = await db.from('workouts')
       .select('id, peloton_workout_id')
-      .eq('fitness_discipline', 'cycling')
+      .in('fitness_discipline', Array.from(PERFORMANCE_GRAPH_DISCIPLINES))
       .not('peloton_workout_id', 'is', null)
       .order('workout_date', { ascending: true })
       .range(offset, offset + batchSize - 1)
