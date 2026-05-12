@@ -43,6 +43,31 @@ function fmtFloat(n: number | null | undefined, digits = 2): string | null {
   return n.toFixed(digits)
 }
 
+// Try to fetch the background image as a data URL so Satori can embed it
+// inline. Fail soft: if anything goes wrong (slow S3, oversized image, weird
+// content-type) we skip the background rather than crashing the whole
+// render, which would otherwise return an empty PNG that gets cached for a
+// year.
+async function tryFetchImageDataUrl(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 3000)
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(t)
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type') ?? 'image/png'
+    const buf = await res.arrayBuffer()
+    if (buf.byteLength > 1_500_000) return null // skip very large images
+    // base64 in edge runtime: btoa with binary string from Uint8Array
+    let binary = ''
+    const bytes = new Uint8Array(buf)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return `data:${contentType};base64,${btoa(binary)}`
+  } catch {
+    return null
+  }
+}
+
 export default async function RideOgImage({
   params,
 }: {
@@ -80,7 +105,10 @@ export default async function RideOgImage({
 
   const title = ride?.title ?? 'Tabata Tuesday ride'
   const instructor = ride?.instructor_name
-  const imageUrl = ride?.image_url
+
+  const bgDataUrl = ride?.image_url
+    ? await tryFetchImageDataUrl(ride.image_url)
+    : null
 
   return new ImageResponse(
     (
@@ -90,38 +118,44 @@ export default async function RideOgImage({
           height: '100%',
           display: 'flex',
           position: 'relative',
-          background: '#0a0a0a',
+          background:
+            'linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 50%, #0a0a0a 100%)',
           color: 'white',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {imageUrl && (
+        {bgDataUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={imageUrl}
+            src={bgDataUrl}
             alt=""
             width={1200}
             height={630}
             style={{
               position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
+              top: 0,
+              left: 0,
+              width: 1200,
+              height: 630,
               objectFit: 'cover',
             }}
           />
         )}
 
-        {/* Dark gradient overlay for legibility */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            background:
-              'linear-gradient(110deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.25) 100%)',
-          }}
-        />
+        {bgDataUrl && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              background:
+                'linear-gradient(110deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.25) 100%)',
+            }}
+          />
+        )}
 
         {/* Foreground content */}
         <div
@@ -129,12 +163,12 @@ export default async function RideOgImage({
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            width: '100%',
-            height: '100%',
+            width: 1200,
+            height: 630,
             padding: '60px 70px',
           }}
         >
-          {/* Top row: branding right-aligned */}
+          {/* Top row: branding + group-best name */}
           <div
             style={{
               display: 'flex',
@@ -166,20 +200,23 @@ export default async function RideOgImage({
             )}
           </div>
 
-          {/* Stats grid */}
+          {/* Stats grid (column) */}
           {stats.length > 0 ? (
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 18,
                 marginTop: 40,
               }}
             >
               {stats.map((s) => (
                 <div
                   key={s.label}
-                  style={{ display: 'flex', flexDirection: 'column' }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    marginBottom: 18,
+                  }}
                 >
                   <span
                     style={{
