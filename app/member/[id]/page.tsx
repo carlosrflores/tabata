@@ -1,14 +1,15 @@
 import Link from 'next/link'
+import { unstable_noStore as noStore } from 'next/cache'
 import MemberStatsClient from './MemberStatsClient'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 async function getMemberStats(id: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
   try {
     const res = await fetch(`${baseUrl}/api/members/${id}/stats`, {
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     })
     if (!res.ok) return null
     return res.json()
@@ -22,6 +23,7 @@ export default async function MemberPage({
 }: {
   params: { id: string }
 }) {
+  noStore()
   const data = await getMemberStats(params.id)
 
   if (!data) {
