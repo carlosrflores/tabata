@@ -132,6 +132,33 @@ where fitness_discipline = 'cycling'
 order by member_id, duration_seconds, total_output_kj desc;
 
 -- ============================================================
+-- Data API grants
+-- ============================================================
+-- Required as of Supabase's May/Oct 2026 change: new tables in
+-- `public` are no longer auto-exposed to the Data API. These
+-- grants make the leaderboard work on a fresh Supabase project.
+-- (Existing pre-cutoff projects keep their implicit grants, so
+-- re-running this is a no-op there.)
+--
+-- Grants control "can this role hit the table at all?"; RLS
+-- policies below then control "which rows?". Both must allow.
+
+grant select on public.members  to anon, authenticated;
+grant select on public.workouts to anon, authenticated;
+
+grant select, insert, update, delete
+  on public.members, public.workouts, public.sync_log
+  to service_role;
+
+-- Credentials are never exposed to the Data API — service_role only.
+grant select, insert, update, delete
+  on public.member_credentials
+  to service_role;
+
+-- Note: grants for the `rides` table live in rides_migration.sql,
+-- which must be applied after this file.
+
+-- ============================================================
 -- Row Level Security: members can only read their own data
 -- (Public read on leaderboard is intentional for the group)
 -- ============================================================
