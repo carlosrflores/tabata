@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { LeaderboardEntry } from '@/types'
 
@@ -22,6 +22,12 @@ const RANK_RING: Record<number, string> = {
   3: 'ring-amber-300 bg-amber-100 text-amber-800',
 }
 
+const RANK_RING_COLOR: Record<number, string> = {
+  1: 'ring-purple-300',
+  2: 'ring-gray-300',
+  3: 'ring-amber-300',
+}
+
 const RANK_TEXT: Record<number, string> = {
   1: 'text-purple-600',
   2: 'text-gray-500',
@@ -32,16 +38,31 @@ function Avatar({
   initials,
   rank,
   size = 'md',
+  imageUrl,
 }: {
   initials: string
   rank: number
   size?: 'sm' | 'md' | 'lg'
+  imageUrl?: string | null
 }) {
   const sizeClass = {
     sm: 'h-9 w-9 text-xs',
     md: 'h-11 w-11 text-sm',
     lg: 'h-14 w-14 text-base',
   }[size]
+
+  if (imageUrl) {
+    const ringColor = RANK_RING_COLOR[rank] ?? 'ring-gray-200'
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt={initials}
+        className={`${sizeClass} flex-shrink-0 rounded-full object-cover ring-2 ${ringColor}`}
+      />
+    )
+  }
+
   const ring = RANK_RING[rank] ?? 'ring-gray-200 bg-white text-gray-600'
   return (
     <div
@@ -83,6 +104,7 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
             initials={entry.initials}
             rank={rank}
             size={rank === 1 ? 'lg' : 'md'}
+            imageUrl={entry.image_url}
           />
           <div className="mt-1.5 text-center text-xs font-medium text-gray-800 leading-tight group-hover:text-purple-700">
             {entry.name.split(' ')[0]}
@@ -149,14 +171,88 @@ function StatCard({
   )
 }
 
-export default function LeaderboardClient({ data }: { data: LeaderboardData }) {
+function ChevronLeft() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  )
+}
+
+function ChevronRight() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  )
+}
+
+export default function LeaderboardClient({
+  data: initialData,
+}: {
+  data: LeaderboardData
+}) {
   const [showAll, setShowAll] = useState(false)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [data, setData] = useState<LeaderboardData>(initialData)
+  const [loading, setLoading] = useState(false)
+
+  const MAX_WEEKS_BACK = 52
+
+  // Offset 0 uses the server-rendered data; older weeks are fetched on demand.
+  useEffect(() => {
+    if (weekOffset === 0) {
+      setData(initialData)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/leaderboard?weekOffset=${weekOffset}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setData(d)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [weekOffset, initialData])
+
   const { leaderboard, week_stats } = data
+  const isCurrentWeek = weekOffset === 0
 
   const weekDate = new Date(week_stats.week_start).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
   })
+  const weekLabel =
+    weekOffset === 0
+      ? 'This week'
+      : weekOffset === 1
+      ? 'Last week'
+      : `${weekOffset} weeks ago`
 
   const visibleRows = showAll ? leaderboard : leaderboard.slice(0, 5)
 
@@ -169,12 +265,35 @@ export default function LeaderboardClient({ data }: { data: LeaderboardData }) {
             Leaderboard
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Where the group stands this week.
+            {isCurrentWeek
+              ? 'Where the group stands this week.'
+              : 'Results from a past week.'}
           </p>
         </div>
-        <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-500">
-          Week of {weekDate}
-        </span>
+        {/* Week navigation */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setWeekOffset((o) => Math.min(MAX_WEEKS_BACK, o + 1))}
+            disabled={loading || weekOffset >= MAX_WEEKS_BACK}
+            aria-label="Previous week"
+            className="grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-purple-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-500"
+          >
+            <ChevronLeft />
+          </button>
+          <span className="min-w-[8rem] rounded-full border border-gray-200 bg-white px-3 py-1 text-center text-xs text-gray-500">
+            {loading ? 'Loading…' : `${weekLabel} · ${weekDate}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setWeekOffset((o) => Math.max(0, o - 1))}
+            disabled={loading || weekOffset === 0}
+            aria-label="Next week"
+            className="grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-purple-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-500"
+          >
+            <ChevronRight />
+          </button>
+        </div>
       </div>
 
       {/* Summary stat cards */}
@@ -199,14 +318,20 @@ export default function LeaderboardClient({ data }: { data: LeaderboardData }) {
       </div>
 
       {/* Podium */}
-      {leaderboard.length >= 3 && (
+      {week_stats.group_total_output_kj > 0 && leaderboard.length >= 3 ? (
         <section className="ring-card mb-8 rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
           <p className="mb-4 text-[11px] font-medium uppercase tracking-widest text-gray-400">
-            This week&apos;s podium
+            {isCurrentWeek ? "This week's podium" : 'Podium'}
           </p>
           <Podium entries={leaderboard} />
         </section>
-      )}
+      ) : week_stats.group_total_output_kj === 0 ? (
+        <section className="ring-card mb-8 rounded-3xl border border-gray-100 bg-white px-5 py-10 text-center">
+          <p className="text-sm text-gray-400">
+            No cycling rides logged this week.
+          </p>
+        </section>
+      ) : null}
 
       {/* Leaderboard table */}
       <section className="ring-card mb-8 overflow-hidden rounded-3xl border border-gray-100 bg-white">
@@ -235,7 +360,12 @@ export default function LeaderboardClient({ data }: { data: LeaderboardData }) {
                   >
                     {rank}
                   </span>
-                  <Avatar initials={entry.initials} rank={rank} size="sm" />
+                  <Avatar
+                    initials={entry.initials}
+                    rank={rank}
+                    size="sm"
+                    imageUrl={entry.image_url}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-sm font-medium text-gray-900">
@@ -282,8 +412,8 @@ export default function LeaderboardClient({ data }: { data: LeaderboardData }) {
         )}
       </section>
 
-      {/* Consistency streaks */}
-      {leaderboard.length > 0 && (
+      {/* Consistency streaks — current week only (streaks are "as of now") */}
+      {isCurrentWeek && leaderboard.length > 0 && (
         <section>
           <p className="mb-3 text-[11px] font-medium uppercase tracking-widest text-gray-400">
             Consistency streaks

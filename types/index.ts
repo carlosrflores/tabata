@@ -36,6 +36,7 @@ export interface LeaderboardEntry {
   member_id: string
   name: string
   initials: string
+  image_url: string | null
   total_output_kj: number
   workout_count: number
   best_leaderboard_rank: number | null
