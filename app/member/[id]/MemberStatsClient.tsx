@@ -13,7 +13,13 @@ import type { Workout, PersonalRecord } from '@/types'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 
 interface MemberData {
-  member: { id: string; name: string; initials: string; peloton_username: string }
+  member: {
+    id: string
+    name: string
+    initials: string
+    peloton_username: string
+    image_url?: string | null
+  }
   recent_workouts: Workout[]
   personal_records: PersonalRecord[]
   monthly_trend: { month: string; total_output_kj: number }[]
@@ -31,9 +37,18 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
 
       {/* Member header */}
       <section className="ring-card mb-6 flex items-center gap-4 rounded-3xl border border-gray-100 bg-white p-5">
-        <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-base font-semibold text-white shadow ring-4 ring-white">
-          {member.initials}
-        </div>
+        {member.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={member.image_url}
+            alt={member.name}
+            className="h-14 w-14 flex-shrink-0 rounded-full object-cover shadow ring-4 ring-white"
+          />
+        ) : (
+          <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-base font-semibold text-white shadow ring-4 ring-white">
+            {member.initials}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-2xl font-semibold tracking-tight text-gray-900">
             {member.name}

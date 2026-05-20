@@ -5,6 +5,7 @@ import {
   fetchWorkoutSummary,
   fetchWorkoutPerformance,
   fetchRide,
+  fetchPelotonUserImage,
   extractAvgMetric,
   extractSummaryMetric,
   refreshPelotonToken,
@@ -244,7 +245,7 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
 
   const { data: member, error: memberErr } = await db
     .from('members')
-    .select('id, name, peloton_username, peloton_user_id')
+    .select('id, name, peloton_username, peloton_user_id, image_url')
     .eq('id', memberId)
     .single()
 
@@ -286,6 +287,18 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     // Owner's token with owner's userId; targetUserId routes the workout fetch
     // to the right member via fetchNewWorkouts.
     session = ownerSession
+  }
+
+  // Opportunistically backfill the member's avatar when we don't have one yet.
+  // Non-fatal: a failed image fetch must never break the workout sync.
+  if (!member.image_url) {
+    const imageUrl = await fetchPelotonUserImage(
+      session,
+      targetUserId ?? session.userId
+    )
+    if (imageUrl) {
+      await db.from('members').update({ image_url: imageUrl }).eq('id', memberId)
+    }
   }
 
   const { data: logEntry } = await db
