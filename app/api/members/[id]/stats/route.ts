@@ -36,10 +36,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       month, total_output_kj: Math.round(kj)
     }))
 
-    const { data: allTimeStats } = await db.from('workouts')
-      .select('total_output_kj').eq('member_id', memberId).eq('fitness_discipline', 'cycling')
-    const totalWorkouts = allTimeStats?.length ?? 0
-    const allTimeOutput = (allTimeStats ?? []).reduce((sum, w) => sum + (w.total_output_kj ?? 0), 0)
+    // Aggregated server-side via the member_cycling_totals view — a raw
+    // select capped at PostgREST's 1000-row limit and would understate
+    // members with >1000 lifetime cycling workouts.
+    const { data: totals } = await db.from('member_cycling_totals')
+      .select('total_workouts, total_output_kj').eq('member_id', memberId).maybeSingle()
+    const totalWorkouts = Number(totals?.total_workouts ?? 0)
+    const allTimeOutput = Number(totals?.total_output_kj ?? 0)
 
     return NextResponse.json({
       member,
