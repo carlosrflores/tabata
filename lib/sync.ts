@@ -21,12 +21,15 @@ const RIDE_CACHE_TTL_DAYS = 30
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>
 
-function transformRide(ride: PelotonRide) {
+function transformRide(ride: PelotonRide, fallbackInstructorName?: string | null) {
   return {
     id: ride.id,
     title: ride.title ?? null,
     description: ride.description ?? null,
-    instructor_name: ride.instructor?.name ?? null,
+    // /api/ride/{id}?joins=instructor often returns only instructor_id, not a
+    // nested instructor object, so fall back to the name resolved from the
+    // workout summary's ride.instructor join (which does populate reliably).
+    instructor_name: ride.instructor?.name ?? fallbackInstructorName ?? null,
     instructor_image_url: ride.instructor?.image_url ?? null,
     duration_seconds: ride.duration ?? null,
     fitness_discipline: ride.fitness_discipline ?? null,
@@ -55,9 +58,14 @@ async function ensureRidesCached(
   summaries: PelotonWorkoutSummary[]
 ): Promise<Set<string>> {
   const rideIds = new Set<string>()
+  const instructorByRide = new Map<string, string>()
   for (const s of summaries) {
     const id = s.ride?.id
-    if (id) rideIds.add(id)
+    if (id) {
+      rideIds.add(id)
+      const name = s.ride?.instructor?.name
+      if (name && !instructorByRide.has(id)) instructorByRide.set(id, name)
+    }
   }
   if (rideIds.size === 0) return new Set()
 
@@ -85,7 +93,9 @@ async function ensureRidesCached(
       const ride = await fetchRide(session, rideId)
       const { error } = await db
         .from('rides')
-        .upsert(transformRide(ride), { onConflict: 'id' })
+        .upsert(transformRide(ride, instructorByRide.get(rideId) ?? null), {
+          onConflict: 'id',
+        })
       if (error) throw error
       safeIds.add(rideId)
       await new Promise((r) => setTimeout(r, 200))
