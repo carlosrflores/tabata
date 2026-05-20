@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/debug?mode=sync",
+      "path": "/api/debug?mode=sync&trigger=cron",
       "schedule": "0 6 * * *"
     }
   ]

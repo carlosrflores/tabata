@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { authenticatePeloton, fetchAllFollowing, fetchFollowing } from '@/lib/peloton'
-import { syncMember, syncAllMembers } from '@/lib/sync'
+import {
+  authenticatePeloton,
+  fetchAllFollowing,
+  fetchFollowing,
+  PERFORMANCE_GRAPH_DISCIPLINES,
+} from '@/lib/peloton'
+import { syncMember, syncAllMembers, type SyncTrigger } from '@/lib/sync'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'edge'
@@ -92,10 +97,11 @@ export async function GET(req: NextRequest) {
     const token = creds?.peloton_bearer_token ?? ''
     const hdrs = { 'Authorization': `Bearer ${token}`, 'Peloton-Platform': 'web', 'Accept': 'application/json' }
 
-    // Fetch all cycling workouts at this page — regardless of whether already backfilled
+    // Fetch all performance-graph-eligible workouts at this page — regardless
+    // of whether already backfilled.
     const { data: rows } = await db.from('workouts')
       .select('id, peloton_workout_id')
-      .eq('fitness_discipline', 'cycling')
+      .in('fitness_discipline', Array.from(PERFORMANCE_GRAPH_DISCIPLINES))
       .not('peloton_workout_id', 'is', null)
       .order('workout_date', { ascending: true })
       .range(offset, offset + batchSize - 1)
@@ -131,9 +137,15 @@ export async function GET(req: NextRequest) {
   }
 
   // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
+  // ?trigger=cron|manual|backfill — recorded on the sync_runs row. Defaults to 'manual'.
   if (mode === 'sync') {
+    const triggerParam = req.nextUrl.searchParams.get('trigger')
+    const trigger: SyncTrigger =
+      triggerParam === 'cron' || triggerParam === 'manual' || triggerParam === 'backfill'
+        ? triggerParam
+        : 'manual'
     try {
-      const results = await syncAllMembers()
+      const results = await syncAllMembers(trigger)
       const totalAdded = results.reduce((sum, r) => sum + r.workoutsAdded, 0)
       return NextResponse.json({ results, total_workouts_added: totalAdded, synced_at: new Date().toISOString() })
     } catch (err) {

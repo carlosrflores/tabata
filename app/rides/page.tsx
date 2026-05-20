@@ -1,9 +1,11 @@
 // /rides — index of all rides anyone in the active group has taken.
-// Sorted by group popularity (most distinct members first).
+// Sorted by most recently taken (any member), with group popularity as
+// a tiebreaker for same-day classes.
 //
 // Public read, matching the leaderboard's RLS pattern.
 
 import Link from 'next/link';
+import { unstable_noStore as noStore } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
   formatDuration,
@@ -16,12 +18,16 @@ import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const dynamic = 'force-dynamic';
 
 export default async function RidesIndexPage() {
+  // See ride detail page for the explanation — Next.js Data Cache was
+  // serving stale supabase-js fetch results despite force-dynamic.
+  noStore();
+
   const db = getSupabaseAdmin();
   const { data, error } = await db
     .from('ride_popularity')
     .select('*')
-    .order('group_member_count', { ascending: false })
     .order('most_recent_attempt', { ascending: false })
+    .order('group_member_count', { ascending: false })
     .limit(100);
 
   const rides = (data ?? []) as RidePopularityRow[];
@@ -38,7 +44,7 @@ export default async function RidesIndexPage() {
             Rides
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Classes anyone in the group has taken, sorted by popularity.
+            Classes anyone in the group has taken, most recently taken first.
           </p>
         </div>
         <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-500">

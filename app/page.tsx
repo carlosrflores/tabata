@@ -1,14 +1,14 @@
 import { Suspense } from 'react'
+import { unstable_noStore as noStore } from 'next/cache'
 import LeaderboardClient from './LeaderboardClient'
 
-export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
 async function getLeaderboardData() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
   try {
     const res = await fetch(`${baseUrl}/api/leaderboard`, {
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     })
     if (!res.ok) return null
     return res.json()
@@ -30,6 +30,7 @@ const emptyData = {
 }
 
 export default async function HomePage() {
+  noStore()
   const data = await getLeaderboardData()
   return (
     <Suspense fallback={<div className="text-center py-12 text-gray-400">Loading...</div>}>

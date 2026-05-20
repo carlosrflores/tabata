@@ -5,6 +5,45 @@ import type {
 } from '@/types'
 
 const PELOTON_BASE = 'https://api.onepeloton.com'
+const PELOTON_AUTH_BASE = 'https://auth.onepeloton.com'
+
+// Fitness disciplines that expose /performance_graph endpoints. Today: just
+// cycling. Tread workouts also have a performance graph and will go in here
+// the day someone in the group buys one. Other disciplines (strength, yoga,
+// running) either don't have one or 404 — see fetchWorkoutPerformance.
+export const PERFORMANCE_GRAPH_DISCIPLINES: ReadonlySet<string> = new Set([
+  'cycling',
+])
+
+// Wraps fetch with: 5xx retry (exp backoff + jitter), 4xx returned as-is,
+// network errors retried up to `retries` times. Used for every call against
+// api.onepeloton.com and auth.onepeloton.com.
+//
+// 5xx is almost always a transient Peloton-backend blip (502/503). 4xx is
+// not retryable — it indicates auth or bad-request issues that need caller
+// attention.
+async function pelotonFetch(
+  url: string,
+  init: RequestInit & { retries?: number } = {}
+): Promise<Response> {
+  const { retries = 2, ...rest } = init
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, rest)
+      if (res.status < 500) return res
+      if (attempt === retries) return res
+    } catch (e) {
+      lastErr = e
+      if (attempt === retries) throw e
+    }
+    // Backoff: 500ms, 1500ms with up to 200ms of jitter.
+    const delayMs = 500 * Math.pow(3, attempt) + Math.floor(Math.random() * 200)
+    await new Promise((r) => setTimeout(r, delayMs))
+  }
+  // Unreachable: loop returns or throws on the last attempt.
+  throw lastErr ?? new Error('pelotonFetch: exhausted retries')
+}
 
 export interface PelotonSession {
   token: string
@@ -29,6 +68,61 @@ function pelotonHeaders(token: string): Record<string, string> {
   }
 }
 
+export interface RefreshedPelotonTokens {
+  accessToken: string
+  refreshToken: string  // may be the same as input if Auth0 didn't rotate it
+  expiresAt: string     // ISO timestamp computed from expires_in
+}
+
+// Exchange a refresh token for a fresh access token via Auth0.
+// Throws on any non-2xx response or missing access_token.
+//
+// Auth0 rotates refresh tokens by default; the caller MUST persist whatever
+// comes back in `refreshToken`. If the response unexpectedly omits one, we
+// fall back to the input refresh token so the caller can keep using it.
+export async function refreshPelotonToken(
+  refreshToken: string,
+  clientId: string
+): Promise<RefreshedPelotonTokens> {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: clientId,
+    refresh_token: refreshToken,
+  })
+
+  const res = await pelotonFetch(`${PELOTON_AUTH_BASE}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json',
+    },
+    body,
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(
+      `Peloton token refresh failed (${res.status}): ${text.slice(0, 200)}`
+    )
+  }
+
+  const data = await res.json()
+  if (typeof data.access_token !== 'string' || !data.access_token) {
+    throw new Error('Peloton token refresh response missing access_token')
+  }
+
+  const expiresInSec = typeof data.expires_in === 'number' ? data.expires_in : 0
+  return {
+    accessToken: data.access_token,
+    refreshToken:
+      typeof data.refresh_token === 'string' && data.refresh_token
+        ? data.refresh_token
+        : refreshToken,
+    expiresAt: new Date(Date.now() + expiresInSec * 1000).toISOString(),
+  }
+}
+
 // Validate an OAuth access token by calling /api/me and return the user ID.
 // Peloton's /auth/login was shut down Oct 2025; tokens now come from
 // the Auth0 PKCE flow at auth.onepeloton.com (or from browser DevTools).
@@ -41,7 +135,7 @@ export async function authenticatePeloton(
     ? bearerToken.slice(7)
     : bearerToken
 
-  const res = await fetch(`${PELOTON_BASE}/api/me`, {
+  const res = await pelotonFetch(`${PELOTON_BASE}/api/me`, {
     headers: pelotonHeaders(token),
     cache: 'no-store',
   })
@@ -80,7 +174,7 @@ export async function fetchFollowing(
   page = 0,
   limit = 100
 ): Promise<{ users: PelotonFollowingUser[]; total: number }> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/user/${session.userId}/following?limit=${limit}&page=${page}`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -128,7 +222,7 @@ export async function fetchWorkoutList(
   const userId = targetUserId ?? session.userId
   const url = `${PELOTON_BASE}/api/user/${userId}/workouts?joins=ride,ride.instructor&limit=${limit}&page=${page}&sort_by=-created`
 
-  const res = await fetch(url, {
+  const res = await pelotonFetch(url, {
     headers: pelotonHeaders(session.token),
     cache: 'no-store',
   })
@@ -150,7 +244,7 @@ export async function fetchWorkoutSummary(
   session: PelotonSession,
   workoutId: string
 ): Promise<PelotonWorkoutSummary> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/workout/${workoutId}?joins=ride,ride.instructor`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -167,7 +261,7 @@ export async function fetchWorkoutPerformance(
   session: PelotonSession,
   workoutId: string
 ): Promise<PelotonWorkoutPerformance> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/workout/${workoutId}/performance_graph?every_n=5`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -219,7 +313,7 @@ export async function fetchRide(
   session: PelotonSession,
   rideId: string
 ): Promise<PelotonRide> {
-  const res = await fetch(
+  const res = await pelotonFetch(
     `${PELOTON_BASE}/api/ride/${rideId}?joins=instructor`,
     { headers: pelotonHeaders(session.token), cache: 'no-store' }
   )
@@ -234,6 +328,11 @@ export async function fetchRide(
 // Fetch all NEW workouts for a user (stops when it hits known IDs).
 // knownIds is the set of peloton_workout_ids already in the database.
 // Pass targetUserId to fetch another user's workouts using the session's token.
+//
+// When we encounter a known ID we keep scanning the current page (Peloton can
+// return records slightly out of order during eventual consistency, so a
+// newer-but-unsynced workout may appear after a known one) and then fetch ONE
+// extra page before stopping. Bounded by maxPages so this can never run away.
 export async function fetchNewWorkouts(
   session: PelotonSession,
   knownIds: Set<string>,
@@ -242,25 +341,38 @@ export async function fetchNewWorkouts(
 ): Promise<PelotonWorkoutSummary[]> {
   const newWorkouts: PelotonWorkoutSummary[] = []
 
+  const collect = (workouts: PelotonWorkoutSummary[]) => {
+    for (const w of workouts) {
+      if (!knownIds.has(w.id) && w.status === 'COMPLETE') {
+        newWorkouts.push(w)
+      }
+    }
+  }
+
   for (let page = 0; page < maxPages; page++) {
     const { workouts } = await fetchWorkoutList(session, page, 20, targetUserId)
 
     if (workouts.length === 0) break
 
-    let foundExisting = false
-    for (const workout of workouts) {
-      if (knownIds.has(workout.id)) {
-        foundExisting = true
-        break
-      }
-      // Only sync completed workouts
-      if (workout.status === 'COMPLETE') {
-        newWorkouts.push(workout)
-      }
-    }
+    const foundExisting = workouts.some((w) => knownIds.has(w.id))
+    collect(workouts)
 
-    // Once we hit a workout we already have, no need to paginate further
-    if (foundExisting) break
+    if (foundExisting) {
+      // Lookahead one page: insurance against Peloton's eventual consistency
+      // placing a newer workout below a known one across the page boundary.
+      const lookahead = page + 1
+      if (lookahead < maxPages) {
+        await new Promise((r) => setTimeout(r, 300))
+        const { workouts: extra } = await fetchWorkoutList(
+          session,
+          lookahead,
+          20,
+          targetUserId
+        )
+        collect(extra)
+      }
+      break
+    }
 
     // Rate-limit courtesy: small delay between pages
     if (page < maxPages - 1) {

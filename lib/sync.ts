@@ -7,6 +7,8 @@ import {
   fetchRide,
   extractAvgMetric,
   extractSummaryMetric,
+  refreshPelotonToken,
+  PERFORMANCE_GRAPH_DISCIPLINES,
 } from '@/lib/peloton'
 import type { PelotonSession } from '@/lib/peloton'
 import type {
@@ -19,7 +21,83 @@ import type {
 // Ride metadata rarely changes after the original air date.
 const RIDE_CACHE_TTL_DAYS = 30
 
+// Refresh the access token if it expires within this window. A sync run
+// takes minutes, the token has ~48h of life — a one-minute buffer is plenty.
+const REFRESH_BUFFER_MS = 60 * 1000
+
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>
+
+interface StoredCreds {
+  peloton_bearer_token: string | null
+  peloton_refresh_token: string | null
+  peloton_token_expires_at: string | null
+  peloton_auth0_client_id: string | null
+}
+
+// Read a member's stored credentials, refreshing the access token if it's
+// within REFRESH_BUFFER_MS of expiry (or already expired) and we have both
+// the refresh token and the Auth0 client_id needed to do so. Persists the
+// new tokens back to member_credentials before returning.
+//
+// Falls back to the stored access token if the refresh call fails — the
+// stored token may still be valid for a few seconds, and if not, the next
+// Peloton API call will 401 and surface through the existing error paths.
+//
+// Pre-refresh-token rows (refresh_token / client_id NULL) skip the refresh
+// path entirely and return whatever access token is stored. This is the
+// graceful-fallback that lets the sync keep running before bootstrap is
+// updated to capture refresh tokens.
+async function getFreshPelotonSession(
+  db: SupabaseAdmin,
+  memberId: string,
+  pelotonUserId: string
+): Promise<PelotonSession | null> {
+  const { data: creds } = await db
+    .from('member_credentials')
+    .select(
+      'peloton_bearer_token, peloton_refresh_token, peloton_token_expires_at, peloton_auth0_client_id'
+    )
+    .eq('member_id', memberId)
+    .single<StoredCreds>()
+
+  if (!creds?.peloton_bearer_token) return null
+
+  // Prefer the stored expires_at; for rows written before the auth-refresh
+  // migration it's null, so decode from the JWT instead.
+  const expiresAtIso =
+    creds.peloton_token_expires_at ?? decodeJwtExp(creds.peloton_bearer_token)
+  const expiresAtMs = expiresAtIso ? new Date(expiresAtIso).getTime() : null
+  const needsRefresh =
+    expiresAtMs != null && expiresAtMs - Date.now() < REFRESH_BUFFER_MS
+
+  if (
+    needsRefresh &&
+    creds.peloton_refresh_token &&
+    creds.peloton_auth0_client_id
+  ) {
+    try {
+      const fresh = await refreshPelotonToken(
+        creds.peloton_refresh_token,
+        creds.peloton_auth0_client_id
+      )
+      await db
+        .from('member_credentials')
+        .update({
+          peloton_bearer_token: fresh.accessToken,
+          peloton_refresh_token: fresh.refreshToken,
+          peloton_token_expires_at: fresh.expiresAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('member_id', memberId)
+      return createSession(fresh.accessToken, pelotonUserId)
+    } catch (e) {
+      console.error(`Token refresh failed for member ${memberId}:`, e)
+      // Fall through and use the stored access token below.
+    }
+  }
+
+  return createSession(creds.peloton_bearer_token, pelotonUserId)
+}
 
 function transformRide(ride: PelotonRide, fallbackInstructorName?: string | null) {
   return {
@@ -57,11 +135,16 @@ async function ensureRidesCached(
   session: PelotonSession,
   summaries: PelotonWorkoutSummary[]
 ): Promise<Set<string>> {
+  // Peloton emits this sentinel ride id for class-less sessions (e.g. "Just
+  // Ride", scenic rides). Fetching it 404s; filter it upfront so the log
+  // stays clean. The owning workout still gets ride_id=null safely.
+  const SENTINEL_RIDE_ID = '00000000000000000000000000000000'
+
   const rideIds = new Set<string>()
   const instructorByRide = new Map<string, string>()
   for (const s of summaries) {
     const id = s.ride?.id
-    if (id) {
+    if (id && id !== SENTINEL_RIDE_ID) {
       rideIds.add(id)
       const name = s.ride?.instructor?.name
       if (name && !instructorByRide.has(id)) instructorByRide.set(id, name)
@@ -171,18 +254,18 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
 
   // Try the member's own stored token first; fall back to the owner's token.
   // This allows friends to be added by username alone without providing their own token.
+  // getFreshPelotonSession handles the refresh-token dance internally.
   let session: PelotonSession
   const targetUserId = member.peloton_user_id
 
-  const { data: creds } = await db
-    .from('member_credentials')
-    .select('peloton_bearer_token')
-    .eq('member_id', memberId)
-    .single()
+  const ownSession = await getFreshPelotonSession(
+    db,
+    memberId,
+    member.peloton_user_id ?? ''
+  )
 
-  if (creds?.peloton_bearer_token) {
-    // Member has their own token — use it directly. targetUserId routes the API call.
-    session = createSession(creds.peloton_bearer_token, member.peloton_user_id ?? '')
+  if (ownSession) {
+    session = ownSession
   } else {
     const { data: owner } = await db
       .from('members')
@@ -192,16 +275,17 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
     if (!owner) {
       return { memberId, memberName: member.name, workoutsAdded: 0, error: 'No credentials and no owner found' }
     }
-    const { data: ownerCreds } = await db
-      .from('member_credentials')
-      .select('peloton_bearer_token')
-      .eq('member_id', owner.id)
-      .single()
-    if (!ownerCreds?.peloton_bearer_token) {
+    const ownerSession = await getFreshPelotonSession(
+      db,
+      owner.id,
+      owner.peloton_user_id ?? ''
+    )
+    if (!ownerSession) {
       return { memberId, memberName: member.name, workoutsAdded: 0, error: 'Owner has no credentials stored' }
     }
-    // Use owner's token with owner's userId; targetUserId routes the workout fetch to the right member.
-    session = createSession(ownerCreds.peloton_bearer_token, owner.peloton_user_id ?? '')
+    // Owner's token with owner's userId; targetUserId routes the workout fetch
+    // to the right member via fetchNewWorkouts.
+    session = ownerSession
   }
 
   const { data: logEntry } = await db
@@ -235,7 +319,7 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
       try {
         const summary = await fetchWorkoutSummary(session, workout.id)
         let perf: PelotonWorkoutPerformance = { duration: 0, average_summaries: [], summaries: [] }
-        if (workout.fitness_discipline === 'cycling') {
+        if (PERFORMANCE_GRAPH_DISCIPLINES.has(workout.fitness_discipline)) {
           perf = await fetchWorkoutPerformance(session, workout.id)
         }
         fetched.push({ summary, perf })
@@ -274,16 +358,120 @@ export async function syncMember(memberId: string): Promise<SyncResult> {
   }
 }
 
-export async function syncAllMembers(): Promise<SyncResult[]> {
+export type SyncTrigger = 'cron' | 'manual' | 'backfill'
+
+// Decode the `exp` claim from a Peloton JWT and return it as ISO.
+// Returns null on any parse failure — never throws.
+function decodeJwtExp(token: string): string | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const payload = JSON.parse(atob(parts[1]))
+    if (typeof payload.exp !== 'number') return null
+    return new Date(payload.exp * 1000).toISOString()
+  } catch {
+    return null
+  }
+}
+
+async function fetchOwnerTokenExp(db: SupabaseAdmin): Promise<string | null> {
+  const { data: owner } = await db
+    .from('members')
+    .select('id')
+    .eq('is_owner', true)
+    .single()
+  if (!owner) return null
+  const { data: creds } = await db
+    .from('member_credentials')
+    .select('peloton_bearer_token')
+    .eq('member_id', owner.id)
+    .single()
+  if (!creds?.peloton_bearer_token) return null
+  return decodeJwtExp(creds.peloton_bearer_token)
+}
+
+export async function syncAllMembers(
+  trigger: SyncTrigger = 'manual'
+): Promise<SyncResult[]> {
   const db = getSupabaseAdmin()
-  const { data: members, error } = await db.from('members').select('id').eq('active', true)
-  if (error || !members) return []
+
+  const tokenExpiresAt = await fetchOwnerTokenExp(db).catch(() => null)
+
+  // Open a sync_runs row. Observability must never block sync work, so
+  // failures here are logged but not propagated.
+  let runId: string | null = null
+  try {
+    const { data: run } = await db
+      .from('sync_runs')
+      .insert({ trigger, status: 'running', token_expires_at: tokenExpiresAt })
+      .select('id')
+      .single()
+    runId = run?.id ?? null
+  } catch (e) {
+    console.error('Failed to insert sync_runs row:', e)
+  }
+
+  const finalize = async (
+    status: 'success' | 'partial' | 'failed',
+    membersProcessed: number,
+    membersFailed: number,
+    workoutsAdded: number,
+    lastError: string | null
+  ) => {
+    if (!runId) return
+    try {
+      await db
+        .from('sync_runs')
+        .update({
+          status,
+          finished_at: new Date().toISOString(),
+          members_processed: membersProcessed,
+          members_failed: membersFailed,
+          workouts_added: workoutsAdded,
+          last_error: lastError ? lastError.slice(0, 2000) : null,
+        })
+        .eq('id', runId)
+    } catch (e) {
+      console.error('Failed to update sync_runs row:', e)
+    }
+  }
+
+  const { data: members, error } = await db
+    .from('members')
+    .select('id')
+    .eq('active', true)
+  if (error || !members) {
+    const msg = error
+      ? `Member query failed: ${error.message}`
+      : 'Member query returned no data'
+    await finalize('failed', 0, 0, 0, msg)
+    return []
+  }
 
   const results: SyncResult[] = []
+  let workoutsTotal = 0
+  let failed = 0
+  let firstError: string | null = null
+
   for (const member of members) {
     const result = await syncMember(member.id)
     results.push(result)
+    workoutsTotal += result.workoutsAdded
+    if (result.error) {
+      failed++
+      if (!firstError) firstError = `${result.memberName}: ${result.error}`
+    }
     await new Promise((r) => setTimeout(r, 1000))
   }
+
+  // Empty member list counts as success (nothing to fail).
+  const status =
+    failed === 0
+      ? 'success'
+      : failed >= members.length
+      ? 'failed'
+      : 'partial'
+
+  await finalize(status, members.length, failed, workoutsTotal, firstError)
   return results
 }

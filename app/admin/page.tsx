@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 
 interface Member {
@@ -40,12 +41,6 @@ export default function AdminPage() {
   const [following, setFollowing] = useState<FollowingUser[]>([])
   const [followingLoading, setFollowingLoading] = useState(false)
   const [followingError, setFollowingError] = useState<string | null>(null)
-
-  // Token refresh state
-  const [refreshToken, setRefreshToken] = useState('')
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshError, setRefreshError] = useState<string | null>(null)
-  const [refreshSuccess, setRefreshSuccess] = useState<string | null>(null)
 
   const loadMembers = useCallback(async () => {
     setLoading(true)
@@ -149,7 +144,7 @@ export default function AdminPage() {
 
   async function triggerSync(memberId?: string) {
     setSyncStatus('Syncing...')
-    const url = memberId ? `/api/debug?mode=sync-member&memberId=${memberId}` : '/api/debug?mode=sync'
+    const url = memberId ? `/api/debug?mode=sync-member&memberId=${memberId}` : '/api/debug?mode=sync&trigger=manual'
     const res = await fetch(url, { headers: { Authorization: `Bearer ${secret}` } })
     const data = await res.json()
 
@@ -162,28 +157,6 @@ export default function AdminPage() {
     }
 
     setTimeout(() => setSyncStatus(null), 5000)
-  }
-
-  async function handleRefreshToken(e: React.FormEvent) {
-    e.preventDefault()
-    setRefreshError(null)
-    setRefreshSuccess(null)
-    setRefreshing(true)
-    const res = await fetch('/api/owner/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
-      body: JSON.stringify({ peloton_bearer_token: refreshToken }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setRefreshError(data.error)
-    } else {
-      setRefreshSuccess(data.message)
-      setRefreshToken('')
-      setFollowingError(null)
-      loadFollowing()
-    }
-    setRefreshing(false)
   }
 
   async function handleAuthSubmit() {
@@ -268,55 +241,22 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Refresh owner token */}
+      {/* Peloton token bootstrap (link card) */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
         <h2 className="text-sm font-medium text-gray-900 mb-1">Peloton token</h2>
         <p className="text-xs text-gray-400 mb-4">
-          Tokens expire every ~48 hours. Paste a fresh one here to restore syncing and the add-member dropdown.
+          Store the owner&apos;s Auth0 token bundle. Provide access_token + refresh_token + client_id once
+          and the app refreshes itself; access-token-only also works but requires re-bootstrap every ~48h.
         </p>
-
-        {refreshError && (
-          <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-xs text-red-700 mb-3">
-            {refreshError}
-          </div>
-        )}
-        {refreshSuccess && (
-          <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2 text-xs text-green-700 mb-3">
-            {refreshSuccess}
-          </div>
-        )}
-
-        <form onSubmit={handleRefreshToken} className="space-y-3">
-          <div>
-            <input
-              required
-              type="password"
-              value={refreshToken}
-              onChange={(e) => setRefreshToken(e.target.value)}
-              placeholder="eyJhbGciOi…"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
-            />
-          </div>
-          <details>
-            <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
-              How to get a fresh token
-            </summary>
-            <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
-              <li>Log in to <strong>members.onepeloton.com</strong> in your browser</li>
-              <li>Open DevTools (F12) → <strong>Network</strong> tab</li>
-              <li>Reload the page or click around</li>
-              <li>Click any request to <strong>api.onepeloton.com</strong></li>
-              <li>Under <strong>Request Headers</strong>, copy the <strong>Authorization</strong> value</li>
-            </ol>
-          </details>
-          <button
-            type="submit"
-            disabled={refreshing}
-            className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-          >
-            {refreshing ? 'Verifying…' : 'Update token'}
-          </button>
-        </form>
+        <Link
+          href="/admin/peloton-bootstrap"
+          className="inline-block text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"
+        >
+          Open bootstrap →
+        </Link>
+        <p className="mt-3 text-xs text-gray-400">
+          Health & last 30 runs: <Link href="/admin/health" className="text-purple-500 hover:text-purple-600">/admin/health</Link>
+        </p>
       </div>
 
       {/* Add member form */}

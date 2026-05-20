@@ -37,13 +37,16 @@ export default function ShareButton({
       ? `${window.location.origin}/rides/${rideId}`
       : `/rides/${rideId}`;
   const subject = title;
-  const body = `${title}${instructor ? ` with ${instructor}` : ''}\n\n${url}`;
-  const smsBody = `${title}${instructor ? ` with ${instructor}` : ''} ${url}`;
+  // Email body still includes the URL because mail clients don't render
+  // rich link previews. SMS / native share only get the URL — iMessage's
+  // preview card already shows the page title and host, so duplicating
+  // them in the message body looks redundant.
+  const emailBody = `${title}${instructor ? ` with ${instructor}` : ''}\n\n${url}`;
 
   const mailto = `mailto:?subject=${encodeURIComponent(
     subject,
-  )}&body=${encodeURIComponent(body)}`;
-  const sms = `sms:?&body=${encodeURIComponent(smsBody)}`;
+  )}&body=${encodeURIComponent(emailBody)}`;
+  const sms = `sms:?&body=${encodeURIComponent(url)}`;
 
   async function handleClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -51,7 +54,7 @@ export default function ShareButton({
 
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title, text: body, url });
+        await navigator.share({ url });
         return;
       } catch (err) {
         // User cancelled or sharing failed — fall through to popover.
