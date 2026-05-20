@@ -325,6 +325,28 @@ export async function fetchRide(
   return res.json()
 }
 
+// Fetch a Peloton user's public profile photo URL, or null if unavailable.
+// Used by the sync to backfill members.image_url. Non-fatal: returns null on
+// any error so a missing avatar never fails a sync run.
+export async function fetchPelotonUserImage(
+  session: PelotonSession,
+  userId: string
+): Promise<string | null> {
+  try {
+    const res = await pelotonFetch(`${PELOTON_BASE}/api/user/${userId}`, {
+      headers: pelotonHeaders(session.token),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return typeof data?.image_url === 'string' && data.image_url
+      ? data.image_url
+      : null
+  } catch {
+    return null
+  }
+}
+
 // Fetch all NEW workouts for a user (stops when it hits known IDs).
 // knownIds is the set of peloton_workout_ids already in the database.
 // Pass targetUserId to fetch another user's workouts using the session's token.
