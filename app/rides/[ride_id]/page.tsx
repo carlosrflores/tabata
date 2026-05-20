@@ -163,16 +163,15 @@ export default async function RideDetailPage({ params }: Props) {
                       .join('')}
                   </div>
                 )}
-                <div>
-                  <div className="text-sm font-medium text-gray-900">
-                    {ride.instructor_name}
-                  </div>
-                  {ride.original_air_time && (
-                    <div className="text-xs text-gray-500">
-                      Aired {formatExactDate(ride.original_air_time)}
-                    </div>
-                  )}
+                <div className="text-sm font-medium text-gray-900">
+                  {ride.instructor_name}
                 </div>
+              </div>
+            )}
+
+            {ride.original_air_time && (
+              <div className="mt-2 text-xs text-gray-500">
+                Aired {formatExactDate(ride.original_air_time)}
               </div>
             )}
 
