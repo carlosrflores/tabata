@@ -82,10 +82,20 @@ export async function GET(req: NextRequest) {
   for (const log of syncLogs ?? []) {
     if (!lastSync[log.member_id]) lastSync[log.member_id] = log
   }
-  const { data: workoutCounts } = await db.from('workouts').select('member_id')
+  // Count per member with exact head counts. A single select('member_id') is
+  // capped at PostgREST's default 1000-row limit, which silently under-counts
+  // once total workouts exceed 1000.
+  const memberRows = members ?? []
+  const countResults = await Promise.all(
+    memberRows.map((m) =>
+      db.from('workouts').select('*', { count: 'exact', head: true }).eq('member_id', m.id)
+    )
+  )
   const countMap: Record<string, number> = {}
-  for (const w of workoutCounts ?? []) countMap[w.member_id] = (countMap[w.member_id] ?? 0) + 1
+  memberRows.forEach((m, i) => {
+    countMap[m.id] = countResults[i].count ?? 0
+  })
   return NextResponse.json({
-    members: (members ?? []).map((m) => ({ ...m, workout_count: countMap[m.id] ?? 0, last_sync: lastSync[m.id] ?? null })),
+    members: memberRows.map((m) => ({ ...m, workout_count: countMap[m.id] ?? 0, last_sync: lastSync[m.id] ?? null })),
   })
 }
