@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const memberId = params.id
   try {
     const { data: member, error: memberErr } = await db.from('members')
-      .select('id, name, initials, peloton_username').eq('id', memberId).single()
+      .select('id, name, initials, peloton_username, image_url').eq('id', memberId).single()
     if (memberErr || !member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
 
     const { data: recentWorkouts } = await db.from('workouts')
