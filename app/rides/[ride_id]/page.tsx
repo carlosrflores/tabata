@@ -87,6 +87,14 @@ export default async function RideDetailPage({ params }: Props) {
   const takenMemberIds = new Set(comparison.map((r) => r.member_id));
   const notTaken = allMembers.filter((m) => !takenMemberIds.has(m.id));
 
+  // Deep link into the Peloton web/app at this class's detail modal, where the
+  // "Add to Stack" action lives. The classId is the ride id; the share `code`
+  // and utm params from a manually-shared link are per-share tokens we can't
+  // reconstruct, and aren't needed to open the modal.
+  const pelotonClassUrl = `https://members.onepeloton.com/classes/${
+    ride.fitness_discipline ?? 'cycling'
+  }?modal=classDetailsModal&classId=${ride.id}`;
+
   return (
     <div className="mx-auto max-w-5xl">
       <Breadcrumbs
@@ -194,6 +202,16 @@ export default async function RideDetailPage({ params }: Props) {
                 />
               )}
             </div>
+
+            <a
+              href={pelotonClassUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-purple-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-purple-700"
+            >
+              Open in Peloton
+              <ExternalLinkIcon />
+            </a>
           </div>
 
           <ShareButton
@@ -263,5 +281,25 @@ function Stat({ label, value }: { label: string; value?: string | null }) {
         {value ?? '—'}
       </div>
     </div>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5"
+      aria-hidden
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
   );
 }

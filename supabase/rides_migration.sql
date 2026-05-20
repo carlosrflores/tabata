@@ -44,6 +44,14 @@ create index if not exists rides_fitness_discipline_idx
 create index if not exists rides_duration_idx
   on rides(duration_seconds);
 
+-- Data API grants for rides.
+-- Required as of Supabase's May/Oct 2026 change: new tables in
+-- `public` no longer auto-receive role grants. anon/authenticated
+-- need SELECT for the public ride pages; sync writes use
+-- service_role. Idempotent — safe to re-run.
+grant select on public.rides to anon, authenticated;
+grant select, insert, update, delete on public.rides to service_role;
+
 -- Public read on rides — matches the workouts/members RLS pattern
 alter table rides enable row level security;
 
