@@ -254,23 +254,50 @@ export default function PelotonBootstrapPage() {
           <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
             How to capture all three from members.onepeloton.com
           </summary>
-          <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
-            <li>Log in to <strong>members.onepeloton.com</strong>.</li>
-            <li>
-              Open DevTools (F12) → <strong>Application</strong> → <strong>Local Storage</strong> →{' '}
-              <code>https://members.onepeloton.com</code>.
-            </li>
-            <li>
-              Find a key starting with <code>@@auth0spajs@@</code>. The value is JSON.
-            </li>
-            <li>
-              Copy <code>body.access_token</code>, <code>body.refresh_token</code>, and the{' '}
-              <code>client_id</code> (in the key segment after <code>@@auth0spajs@@::</code>, or inside the blob).
-            </li>
-          </ol>
-          <p className="mt-2 text-xs text-gray-500">
-            Or use the iOS Shortcut from <code>docs/ios-shortcut-bootstrap.md</code> — one tap from Safari and you&apos;re done.
-          </p>
+          <div className="mt-2 space-y-3">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">
+                <strong>Fastest (desktop):</strong> sign in to{' '}
+                <code>members.onepeloton.com</code>, open DevTools (F12) →{' '}
+                <strong>Console</strong>, paste this snippet, then paste your
+                clipboard into the textarea above.
+              </p>
+              <pre className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-[10px] font-mono text-gray-700 overflow-x-auto whitespace-pre-wrap break-all">
+                <code>{`copy(JSON.stringify((()=>{for(const k of Object.keys(localStorage).filter(x=>x.startsWith('@@auth0spajs@@::'))){const b=JSON.parse(localStorage.getItem(k));const body=b?.body??b;if(body?.access_token)return{source:'localStorage',access_token:body.access_token,refresh_token:body.refresh_token??null,client_id:body.client_id??k.split('::')[1]??null,expires_at:body.expires_at??b.expiresAt??null};}return null;})(),null,2));console.log('Bundle copied.');`}</code>
+              </pre>
+              <p className="mt-1 text-[10px] text-gray-400">
+                The snippet iterates all <code>@@auth0spajs@@</code> keys and
+                picks the one that actually has <code>body.access_token</code> —
+                a plain <code>[0]</code> picks the wrong blob (user info,
+                no tokens).
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1"><strong>Manual fallback:</strong></p>
+              <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+                <li>Log in to <strong>members.onepeloton.com</strong>.</li>
+                <li>
+                  Open DevTools (F12) → <strong>Application</strong> → <strong>Local Storage</strong> →{' '}
+                  <code>https://members.onepeloton.com</code>.
+                </li>
+                <li>
+                  Find the <code>@@auth0spajs@@</code> entry whose value has a{' '}
+                  <code>body.access_token</code> field. There are usually two —
+                  you want the one with a <code>body</code> wrapper, not the
+                  plain user-info blob.
+                </li>
+                <li>
+                  Copy <code>body.access_token</code>, <code>body.refresh_token</code>, and{' '}
+                  <code>body.client_id</code>.
+                </li>
+              </ol>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Or use the iOS Shortcut from <code>docs/ios-shortcut-bootstrap.md</code> — one tap from Safari.
+            </p>
+          </div>
         </details>
 
         <button
