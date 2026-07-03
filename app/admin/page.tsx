@@ -241,22 +241,50 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Peloton token bootstrap (link card) */}
+      {/* Utilities */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-        <h2 className="text-sm font-medium text-gray-900 mb-1">Peloton token</h2>
-        <p className="text-xs text-gray-400 mb-4">
-          Store the owner&apos;s Auth0 token bundle. Provide access_token + refresh_token + client_id once
-          and the app refreshes itself; access-token-only also works but requires re-bootstrap every ~48h.
+        <h2 className="text-sm font-medium text-gray-900 mb-1">Utilities</h2>
+        <p className="text-xs text-gray-400 mb-2">
+          Admin tools for managing this deployment.
         </p>
-        <Link
-          href="/admin/peloton-bootstrap"
-          className="inline-block text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"
-        >
-          Open bootstrap →
-        </Link>
-        <p className="mt-3 text-xs text-gray-400">
-          Health & last 30 runs: <Link href="/admin/health" className="text-purple-500 hover:text-purple-600">/admin/health</Link>
-        </p>
+        <ul className="-mx-5 divide-y divide-gray-100 border-t border-gray-100">
+          <li>
+            <Link
+              href="/admin/peloton-bootstrap"
+              className="group flex items-start justify-between gap-3 px-5 py-3 transition-colors hover:bg-gray-50"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
+                  Peloton token bootstrap
+                </div>
+                <div className="text-xs text-gray-400">
+                  Store the owner&apos;s Auth0 bundle and enable auto-refresh.
+                </div>
+              </div>
+              <span aria-hidden className="text-gray-300 group-hover:text-purple-500">
+                →
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/admin/health"
+              className="group flex items-start justify-between gap-3 px-5 py-3 transition-colors hover:bg-gray-50"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
+                  Sync health &amp; history
+                </div>
+                <div className="text-xs text-gray-400">
+                  Last 30 sync runs plus token expiry warnings.
+                </div>
+              </div>
+              <span aria-hidden className="text-gray-300 group-hover:text-purple-500">
+                →
+              </span>
+            </Link>
+          </li>
+        </ul>
       </div>
 
       {/* Add member form */}
