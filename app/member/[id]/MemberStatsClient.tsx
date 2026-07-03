@@ -30,7 +30,7 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
   const { member, recent_workouts, personal_records, monthly_trend, all_time } = data
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl md:max-w-5xl">
       <Breadcrumbs
         items={[{ label: 'Home', href: '/' }, { label: member.name }]}
       />
@@ -115,113 +115,115 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
         </section>
       )}
 
-      {personal_records.length > 0 && (
-        <section className="ring-card mb-6 overflow-hidden rounded-3xl border border-gray-100 bg-white">
-          <div className="border-b border-gray-100 px-5 py-3">
-            <h2 className="text-sm font-medium text-gray-900">
-              Personal records
-            </h2>
-          </div>
-          <ul>
-            {personal_records.map((pr: PersonalRecord) => (
-              <li
-                key={pr.duration_minutes}
-                className="flex items-center border-b border-gray-50 px-5 py-3 last:border-0"
-              >
-                <div className="w-12 text-sm font-semibold text-purple-600">
-                  {pr.duration_minutes}m
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-gray-900">
-                    {pr.workout_title}
+      <div className="grid gap-6 md:grid-cols-2">
+        {recent_workouts.length > 0 && (
+          <section className="ring-card overflow-hidden rounded-3xl border border-gray-100 bg-white">
+            <div className="border-b border-gray-100 px-5 py-3">
+              <h2 className="text-sm font-medium text-gray-900">Recent rides</h2>
+            </div>
+            <ul>
+              {recent_workouts.map((w: Workout) => {
+                const percentile =
+                  w.leaderboard_rank && w.leaderboard_total
+                    ? Math.round(
+                        (1 - w.leaderboard_rank / w.leaderboard_total) * 100
+                      )
+                    : null
+                const RowInner = (
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-gray-900">
+                        {w.title}
+                      </div>
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        {new Date(w.workout_date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                        {w.instructor_name ? ` · ${w.instructor_name}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      {w.total_output_kj ? (
+                        <div className="text-sm font-semibold text-gray-900 tabular-nums">
+                          {Math.round(w.total_output_kj)}
+                          <span className="ml-0.5 text-[11px] font-normal text-gray-400">
+                            kj
+                          </span>
+                        </div>
+                      ) : null}
+                      {percentile !== null && (
+                        <div className="text-xs text-gray-500">
+                          top {100 - percentile}%
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {pr.instructor_name ?? 'Unknown'} ·{' '}
-                    {new Date(pr.workout_date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: '2-digit',
-                    })}
-                  </div>
-                </div>
-                <div className="text-sm font-semibold text-emerald-600 tabular-nums">
-                  {Math.round(pr.total_output_kj)}
-                  <span className="ml-0.5 text-[11px] font-normal text-emerald-500">
-                    kj
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                )
+                return (
+                  <li
+                    key={w.id}
+                    className="border-b border-gray-50 last:border-0"
+                  >
+                    {w.ride_id ? (
+                      <Link
+                        href={`/rides/${w.ride_id}`}
+                        className="block px-5 py-3 transition-colors hover:bg-gray-50"
+                      >
+                        {RowInner}
+                      </Link>
+                    ) : (
+                      <div className="px-5 py-3">{RowInner}</div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
 
-      {recent_workouts.length > 0 && (
-        <section className="ring-card overflow-hidden rounded-3xl border border-gray-100 bg-white">
-          <div className="border-b border-gray-100 px-5 py-3">
-            <h2 className="text-sm font-medium text-gray-900">Recent rides</h2>
-          </div>
-          <ul>
-            {recent_workouts.map((w: Workout) => {
-              const percentile =
-                w.leaderboard_rank && w.leaderboard_total
-                  ? Math.round(
-                      (1 - w.leaderboard_rank / w.leaderboard_total) * 100
-                    )
-                  : null
-              const RowInner = (
-                <div className="flex items-start justify-between gap-3">
+        {personal_records.length > 0 && (
+          <section className="ring-card overflow-hidden rounded-3xl border border-gray-100 bg-white">
+            <div className="border-b border-gray-100 px-5 py-3">
+              <h2 className="text-sm font-medium text-gray-900">
+                Personal records
+              </h2>
+            </div>
+            <ul>
+              {personal_records.map((pr: PersonalRecord) => (
+                <li
+                  key={pr.duration_minutes}
+                  className="flex items-center border-b border-gray-50 px-5 py-3 last:border-0"
+                >
+                  <div className="w-12 text-sm font-semibold text-purple-600">
+                    {pr.duration_minutes}m
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-gray-900">
-                      {w.title}
+                      {pr.workout_title}
                     </div>
-                    <div className="mt-0.5 text-xs text-gray-500">
-                      {new Date(w.workout_date).toLocaleDateString('en-US', {
-                        weekday: 'short',
+                    <div className="text-xs text-gray-500">
+                      {pr.instructor_name ?? 'Unknown'} ·{' '}
+                      {new Date(pr.workout_date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
+                        year: '2-digit',
                       })}
-                      {w.instructor_name ? ` · ${w.instructor_name}` : ''}
                     </div>
                   </div>
-                  <div className="flex-shrink-0 text-right">
-                    {w.total_output_kj ? (
-                      <div className="text-sm font-semibold text-gray-900 tabular-nums">
-                        {Math.round(w.total_output_kj)}
-                        <span className="ml-0.5 text-[11px] font-normal text-gray-400">
-                          kj
-                        </span>
-                      </div>
-                    ) : null}
-                    {percentile !== null && (
-                      <div className="text-xs text-gray-500">
-                        top {100 - percentile}%
-                      </div>
-                    )}
+                  <div className="text-sm font-semibold text-emerald-600 tabular-nums">
+                    {Math.round(pr.total_output_kj)}
+                    <span className="ml-0.5 text-[11px] font-normal text-emerald-500">
+                      kj
+                    </span>
                   </div>
-                </div>
-              )
-              return (
-                <li
-                  key={w.id}
-                  className="border-b border-gray-50 last:border-0"
-                >
-                  {w.ride_id ? (
-                    <Link
-                      href={`/rides/${w.ride_id}`}
-                      className="block px-5 py-3 transition-colors hover:bg-gray-50"
-                    >
-                      {RowInner}
-                    </Link>
-                  ) : (
-                    <div className="px-5 py-3">{RowInner}</div>
-                  )}
                 </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   )
 }
