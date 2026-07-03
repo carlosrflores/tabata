@@ -19,8 +19,32 @@ export default function PelotonBootstrapPage() {
   const [accessToken, setAccessToken] = useState('')
   const [refreshToken, setRefreshToken] = useState('')
   const [clientId, setClientId] = useState('')
+  const [bundleJson, setBundleJson] = useState('')
+  const [bundleError, setBundleError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<BootstrapResponse | null>(null)
+
+  function parseBundle(text: string) {
+    setBundleJson(text)
+    setBundleError(null)
+    const trimmed = text.trim()
+    if (!trimmed) return
+    try {
+      const parsed = JSON.parse(trimmed)
+      const at = typeof parsed?.access_token === 'string' ? parsed.access_token : ''
+      const rt = typeof parsed?.refresh_token === 'string' ? parsed.refresh_token : ''
+      const cid = typeof parsed?.client_id === 'string' ? parsed.client_id : ''
+      if (!at) {
+        setBundleError('Bundle is missing "access_token".')
+        return
+      }
+      setAccessToken(at)
+      setRefreshToken(rt)
+      setClientId(cid)
+    } catch {
+      setBundleError('Not valid JSON — check the copied text.')
+    }
+  }
 
   async function handleAuthSubmit() {
     if (!secret.trim()) {
@@ -161,6 +185,31 @@ export default function PelotonBootstrapPage() {
         onSubmit={handleSubmit}
         className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4"
       >
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">
+            Paste bundle JSON (from bookmarklet)
+          </label>
+          <textarea
+            value={bundleJson}
+            onChange={(e) => parseBundle(e.target.value)}
+            placeholder='{"access_token":"...","refresh_token":"...","client_id":"..."}'
+            rows={4}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-purple-200"
+          />
+          {bundleError ? (
+            <p className="mt-1 text-xs text-red-600">{bundleError}</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">
+              Paste the JSON from the bookmarklet or DevTools snippet — the three fields below fill in automatically.
+            </p>
+          )}
+        </div>
+
+        <div className="border-t border-gray-100 pt-4" />
+
         <div>
           <label className="block text-xs text-gray-400 mb-1">Access token (required)</label>
           <input
