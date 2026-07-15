@@ -30,6 +30,7 @@ export default function AdminPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [linkStatus, setLinkStatus] = useState<Record<string, string>>({})
 
   // Add-member form state
   const [form, setForm] = useState({ name: '', initials: '', peloton_username: '', peloton_user_id: '', peloton_bearer_token: '' })
@@ -172,6 +173,33 @@ export default function AdminPage() {
       setAuthError('Incorrect secret — try again.')
     }
     setAuthChecking(false)
+  }
+
+  async function copyConnectLink(memberId: string) {
+    setLinkStatus((s) => ({ ...s, [memberId]: 'minting…' }))
+    try {
+      const res = await fetch('/api/admin/connect-codes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ member_id: memberId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      await navigator.clipboard.writeText(data.url)
+      setLinkStatus((s) => ({ ...s, [memberId]: 'link copied!' }))
+    } catch (e) {
+      setLinkStatus((s) => ({
+        ...s,
+        [memberId]: e instanceof Error ? e.message : 'failed',
+      }))
+    }
+    setTimeout(
+      () => setLinkStatus((s) => ({ ...s, [memberId]: '' })),
+      3000
+    )
   }
 
   if (!authed) {
@@ -487,12 +515,26 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => triggerSync(member.id)}
-                className="text-xs text-gray-400 hover:text-purple-500 transition-colors flex-shrink-0"
-              >
-                sync
-              </button>
+              <div className="flex flex-shrink-0 items-center gap-3">
+                {linkStatus[member.id] && (
+                  <span className="text-xs text-purple-500">
+                    {linkStatus[member.id]}
+                  </span>
+                )}
+                <button
+                  onClick={() => copyConnectLink(member.id)}
+                  title="Copy a personal /connect link for this member. Minting a new link invalidates the old one."
+                  className="text-xs text-gray-400 hover:text-purple-500 transition-colors"
+                >
+                  connect link
+                </button>
+                <button
+                  onClick={() => triggerSync(member.id)}
+                  className="text-xs text-gray-400 hover:text-purple-500 transition-colors"
+                >
+                  sync
+                </button>
+              </div>
             </div>
           ))
         )}
