@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { isAuthorized } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/admin/health — returns the last 30 sync_runs rows.
-// Gated by CRON_SECRET bearer; same posture as the rest of /admin.
+// Gated by admin session or CRON_SECRET; same posture as the rest of /admin.
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

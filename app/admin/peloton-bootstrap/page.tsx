@@ -11,11 +11,9 @@ interface BootstrapResponse {
 }
 
 export default function PelotonBootstrapPage() {
-  const [secret, setSecret] = useState('')
-  const [authed, setAuthed] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-  const [authChecking, setAuthChecking] = useState(false)
-
+  // The /admin layout gates access server-side; session cookies
+  // authenticate the API call. (The iOS Shortcut still POSTs to the API
+  // directly with CRON_SECRET — that path is untouched.)
   const [accessToken, setAccessToken] = useState('')
   const [refreshToken, setRefreshToken] = useState('')
   const [clientId, setClientId] = useState('')
@@ -46,25 +44,6 @@ export default function PelotonBootstrapPage() {
     }
   }
 
-  async function handleAuthSubmit() {
-    if (!secret.trim()) {
-      setAuthError('Enter the CRON_SECRET.')
-      return
-    }
-    setAuthChecking(true)
-    setAuthError(null)
-    // Cheap probe: /api/admin/health uses the same CRON_SECRET gate.
-    const res = await fetch('/api/admin/health', {
-      headers: { Authorization: `Bearer ${secret}` },
-    })
-    if (res.ok) {
-      setAuthed(true)
-    } else {
-      setAuthError('Incorrect secret — try again.')
-    }
-    setAuthChecking(false)
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
@@ -72,10 +51,7 @@ export default function PelotonBootstrapPage() {
     try {
       const res = await fetch('/api/admin/peloton-bootstrap', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           access_token: accessToken.trim(),
           refresh_token: refreshToken.trim() || null,
@@ -101,46 +77,6 @@ export default function PelotonBootstrapPage() {
       setResult({ ok: false, message: e instanceof Error ? e.message : String(e) })
     }
     setSubmitting(false)
-  }
-
-  if (!authed) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Breadcrumbs
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Admin', href: '/admin' },
-            { label: 'Peloton bootstrap' },
-          ]}
-        />
-        <div className="ring-card mx-auto mt-6 w-full max-w-sm rounded-3xl border border-gray-100 bg-white p-8">
-          <h1 className="mb-1 text-xl font-semibold text-gray-900">Admin access</h1>
-          <p className="mb-6 text-xs text-gray-500">
-            Enter the CRON_SECRET to bootstrap Peloton credentials.
-          </p>
-          {authError && (
-            <div className="mb-3 rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
-              {authError}
-            </div>
-          )}
-          <input
-            type="password"
-            placeholder="CRON_SECRET"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
-            onKeyDown={(e) => e.key === 'Enter' && handleAuthSubmit()}
-          />
-          <button
-            onClick={handleAuthSubmit}
-            disabled={authChecking}
-            className="w-full rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-2 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-60"
-          >
-            {authChecking ? 'Checking…' : 'Continue'}
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (

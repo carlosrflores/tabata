@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { authenticatePeloton } from '@/lib/peloton'
+import { isAuthorized } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 // Edge runtime: authenticatePeloton calls Peloton /api/me, which is blocked
@@ -51,8 +52,7 @@ function decodeJwtExpIso(token: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

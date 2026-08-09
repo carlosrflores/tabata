@@ -89,12 +89,13 @@ Migrations are **plain SQL files applied manually in the Supabase SQL editor** �
 6. `auth_refresh_migration.sql` — adds the three refresh-token columns to `member_credentials` and drops the vestigial `peloton_password_encrypted` / `peloton_session_cookie`
 7. `member_connect_codes_migration.sql` — per-member self-serve token bootstrap codes (see `docs/member-connect.md`)
 8. `tabata_weeks_migration.sql` — the weekly Tabata Tuesday class pick, feeds `/tabata`
+9. `app_users_migration.sql` — magic-link sign-in allowlist + roles (see `docs/auth.md`)
 
 When adding schema changes, write a new dated migration file under `supabase/` rather than mutating an existing one — and keep it idempotent so it can be re-run safely.
 
 **The "week" is Tuesday → Tuesday.** Both `weekly_leaderboard` and `current_week_stats` compute their bounds as `date_trunc('week', now()) + interval '1 day'` (Postgres weeks start Monday, +1 day = Tuesday). Anything UI-side that talks about "this week" must agree with that boundary.
 
-**RLS posture:** `members`, `workouts`, and `rides` are publicly readable (the leaderboard is intentionally public within the group — no end-user auth exists). `member_credentials` and `sync_runs` are service-role only. Admin and sync API routes are gated by a `CRON_SECRET` bearer header rather than by user auth.
+**RLS posture:** `members`, `workouts`, `rides`, and `tabata_weeks` are publicly readable (the leaderboard is intentionally public within the group). `member_credentials`, `sync_runs`, `member_connect_codes`, and `app_users` are service-role only. Admin and sync API routes accept **either** a `CRON_SECRET` bearer header (machines: GitHub Actions, cron, the iOS Shortcut) **or** a signed-in magic-link session with a sufficient role via `isAuthorized()` in `lib/auth.ts` (see `docs/auth.md`). The admin UI is session-gated by `app/admin/layout.tsx`; the picker role may only set the weekly Tabata class.
 
 ## Conventions
 

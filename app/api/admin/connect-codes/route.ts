@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { isAuthorized } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,11 +10,7 @@ export const dynamic = 'force-dynamic'
 // POST → { member_id } — mint a code for the member (or rotate the
 //        existing one), returns { code, url }.
 //
-// Gated by CRON_SECRET like the rest of /api/admin.
-
-function authorized(req: NextRequest): boolean {
-  return req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`
-}
+// Gated by admin session or CRON_SECRET like the rest of /api/admin.
 
 function generateCode(): string {
   // 24 chars of URL-safe base62 from Web Crypto (~143 bits of entropy).
@@ -30,7 +27,7 @@ function connectUrl(code: string): string {
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const db = getSupabaseAdmin()
@@ -46,7 +43,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!authorized(req)) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
