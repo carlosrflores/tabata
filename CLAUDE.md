@@ -87,6 +87,8 @@ Migrations are **plain SQL files applied manually in the Supabase SQL editor** �
 4. `member_image_migration.sql`
 5. `sync_runs_migration.sql` — observability table feeding `/admin/health`
 6. `auth_refresh_migration.sql` — adds the three refresh-token columns to `member_credentials` and drops the vestigial `peloton_password_encrypted` / `peloton_session_cookie`
+7. `member_connect_codes_migration.sql` — per-member self-serve token bootstrap codes (see `docs/member-connect.md`)
+8. `tabata_weeks_migration.sql` — the weekly Tabata Tuesday class pick, feeds `/tabata`
 
 When adding schema changes, write a new dated migration file under `supabase/` rather than mutating an existing one — and keep it idempotent so it can be re-run safely.
 

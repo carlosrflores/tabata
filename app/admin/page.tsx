@@ -175,6 +175,41 @@ export default function AdminPage() {
     setAuthChecking(false)
   }
 
+  const [tabataUrl, setTabataUrl] = useState('')
+  const [tabataBusy, setTabataBusy] = useState(false)
+  const [tabataMsg, setTabataMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function handleSetTabataWeek(e: React.FormEvent) {
+    e.preventDefault()
+    setTabataBusy(true)
+    setTabataMsg(null)
+    try {
+      const res = await fetch('/api/admin/tabata-week', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ url: tabataUrl }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setTabataMsg({
+        ok: true,
+        text: `Set week of ${data.week_start}: ${data.ride?.title ?? 'class cached'}${
+          data.ride?.instructor_name ? ` with ${data.ride.instructor_name}` : ''
+        }`,
+      })
+      setTabataUrl('')
+    } catch (err) {
+      setTabataMsg({
+        ok: false,
+        text: err instanceof Error ? err.message : 'Failed',
+      })
+    }
+    setTabataBusy(false)
+  }
+
   async function copyConnectLink(memberId: string) {
     setLinkStatus((s) => ({ ...s, [memberId]: 'minting…' }))
     try {
@@ -313,6 +348,49 @@ export default function AdminPage() {
             </Link>
           </li>
         </ul>
+      </div>
+
+      {/* Tabata Tuesday week pick */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+        <h2 className="text-sm font-medium text-gray-900 mb-1">
+          Tabata Tuesday — set this week&apos;s class
+        </h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Paste the scheduled-class share link (the one Stephanie texts the
+          group). The class and week are read from the link and shown on the{' '}
+          <a href="/tabata" className="text-purple-500 hover:text-purple-600">
+            /tabata
+          </a>{' '}
+          page.
+        </p>
+        {tabataMsg && (
+          <div
+            className={
+              'rounded-lg border px-3 py-2 text-xs mb-4 ' +
+              (tabataMsg.ok
+                ? 'bg-green-50 border-green-100 text-green-700'
+                : 'bg-red-50 border-red-100 text-red-700')
+            }
+          >
+            {tabataMsg.text}
+          </div>
+        )}
+        <form onSubmit={handleSetTabataWeek} className="flex gap-2">
+          <input
+            required
+            value={tabataUrl}
+            onChange={(e) => setTabataUrl(e.target.value)}
+            placeholder="https://members.onepeloton.com/scheduled/class/…"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+          />
+          <button
+            type="submit"
+            disabled={tabataBusy || !tabataUrl.trim()}
+            className="bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
+          >
+            {tabataBusy ? 'Saving…' : 'Set class'}
+          </button>
+        </form>
       </div>
 
       {/* Add member form */}
