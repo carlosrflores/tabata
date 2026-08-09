@@ -22,11 +22,13 @@ interface FollowingUser {
   image_url: string | null
 }
 
+interface AppUserRow {
+  email: string
+  role: 'admin' | 'picker'
+  last_login_at: string | null
+}
+
 export default function AdminPage() {
-  const [secret, setSecret] = useState('')
-  const [authed, setAuthed] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-  const [authChecking, setAuthChecking] = useState(false)
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
@@ -43,24 +45,22 @@ export default function AdminPage() {
   const [followingLoading, setFollowingLoading] = useState(false)
   const [followingError, setFollowingError] = useState<string | null>(null)
 
+  // Session cookies authenticate all admin API calls — the server-side
+  // layout gate guarantees only signed-in admins render this page.
   const loadMembers = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/members', {
-      headers: { Authorization: `Bearer ${secret}` },
-    })
+    const res = await fetch('/api/members')
     if (res.ok) {
       const data = await res.json()
       setMembers(data.members)
     }
     setLoading(false)
-  }, [secret])
+  }, [])
 
   const loadFollowing = useCallback(async () => {
     setFollowingLoading(true)
     setFollowingError(null)
-    const res = await fetch('/api/debug?mode=following', {
-      headers: { Authorization: `Bearer ${secret}` },
-    })
+    const res = await fetch('/api/debug?mode=following')
     if (res.ok) {
       const data = await res.json()
       setFollowing(data.users ?? [])
@@ -69,18 +69,18 @@ export default function AdminPage() {
       setFollowingError(data.error ?? 'Failed to load following list')
     }
     setFollowingLoading(false)
-  }, [secret])
+  }, [])
 
   useEffect(() => {
-    if (authed && members.length === 0) loadMembers()
-  }, [authed, members.length, loadMembers])
+    loadMembers()
+  }, [loadMembers])
 
   // Load the following list whenever the member list refreshes and an owner exists
   useEffect(() => {
-    if (authed && members.some((m) => m.is_owner)) {
+    if (members.some((m) => m.is_owner)) {
       loadFollowing()
     }
-  }, [authed, members, loadFollowing])
+  }, [members, loadFollowing])
 
   function handleNameChange(name: string) {
     const parts = name.trim().split(' ')
@@ -126,7 +126,7 @@ export default function AdminPage() {
 
     const res = await fetch('/api/members', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
 
@@ -146,7 +146,7 @@ export default function AdminPage() {
   async function triggerSync(memberId?: string) {
     setSyncStatus('Syncing...')
     const url = memberId ? `/api/debug?mode=sync-member&memberId=${memberId}` : '/api/debug?mode=sync&trigger=manual'
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${secret}` } })
+    const res = await fetch(url)
     const data = await res.json()
 
     if (res.ok) {
@@ -160,19 +160,55 @@ export default function AdminPage() {
     setTimeout(() => setSyncStatus(null), 5000)
   }
 
-  async function handleAuthSubmit() {
-    if (!secret.trim()) { setAuthError('Enter the CRON_SECRET.'); return }
-    setAuthChecking(true)
-    setAuthError(null)
-    const res = await fetch('/api/members', { headers: { Authorization: `Bearer ${secret}` } })
+  // Allowlist (app_users) management
+  const [users, setUsers] = useState<AppUserRow[]>([])
+  const [userForm, setUserForm] = useState({ email: '', role: 'picker' as 'admin' | 'picker' })
+  const [userMsg, setUserMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [userBusy, setUserBusy] = useState(false)
+
+  const loadUsers = useCallback(async () => {
+    const res = await fetch('/api/admin/users')
     if (res.ok) {
       const data = await res.json()
-      setMembers(data.members)
-      setAuthed(true)
-    } else {
-      setAuthError('Incorrect secret — try again.')
+      setUsers(data.users ?? [])
     }
-    setAuthChecking(false)
+  }, [])
+
+  useEffect(() => {
+    loadUsers()
+  }, [loadUsers])
+
+  async function handleAddUser(e: React.FormEvent) {
+    e.preventDefault()
+    setUserBusy(true)
+    setUserMsg(null)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setUserMsg({ ok: true, text: `${data.email} can now sign in as ${data.role}.` })
+      setUserForm({ email: '', role: 'picker' })
+      loadUsers()
+    } catch (err) {
+      setUserMsg({ ok: false, text: err instanceof Error ? err.message : 'Failed' })
+    }
+    setUserBusy(false)
+  }
+
+  async function handleRemoveUser(email: string) {
+    if (!window.confirm(`Remove ${email}? They will no longer be able to sign in.`)) return
+    const res = await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await res.json()
+    setUserMsg(res.ok ? { ok: true, text: `${email} removed.` } : { ok: false, text: data.error ?? 'Failed' })
+    loadUsers()
   }
 
   const [tabataUrl, setTabataUrl] = useState('')
@@ -186,10 +222,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/tabata-week', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: tabataUrl }),
       })
       const data = await res.json()
@@ -215,10 +248,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/connect-codes', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ member_id: memberId }),
       })
       const data = await res.json()
@@ -234,40 +264,6 @@ export default function AdminPage() {
     setTimeout(
       () => setLinkStatus((s) => ({ ...s, [memberId]: '' })),
       3000
-    )
-  }
-
-  if (!authed) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Admin' }]} />
-        <div className="ring-card mx-auto mt-6 w-full max-w-sm rounded-3xl border border-gray-100 bg-white p-8">
-          <h1 className="mb-1 text-xl font-semibold text-gray-900">Admin access</h1>
-          <p className="mb-6 text-xs text-gray-500">
-            Enter the CRON_SECRET to manage members and trigger syncs.
-          </p>
-          {authError && (
-            <div className="mb-3 rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
-              {authError}
-            </div>
-          )}
-          <input
-            type="password"
-            placeholder="CRON_SECRET"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
-            onKeyDown={(e) => e.key === 'Enter' && handleAuthSubmit()}
-          />
-          <button
-            onClick={handleAuthSubmit}
-            disabled={authChecking}
-            className="w-full rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-2 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-60"
-          >
-            {authChecking ? 'Checking…' : 'Continue'}
-          </button>
-        </div>
-      </div>
     )
   }
 
@@ -348,6 +344,77 @@ export default function AdminPage() {
             </Link>
           </li>
         </ul>
+      </div>
+
+      {/* Sign-in allowlist */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+        <h2 className="text-sm font-medium text-gray-900 mb-1">Sign-in access</h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Who can sign in with a magic link. Admins get everything here;
+          pickers can only set the weekly Tabata class.
+        </p>
+        {userMsg && (
+          <div
+            className={
+              'rounded-lg border px-3 py-2 text-xs mb-4 ' +
+              (userMsg.ok
+                ? 'bg-green-50 border-green-100 text-green-700'
+                : 'bg-red-50 border-red-100 text-red-700')
+            }
+          >
+            {userMsg.text}
+          </div>
+        )}
+        {users.length > 0 && (
+          <ul className="mb-4 divide-y divide-gray-50 border border-gray-100 rounded-lg">
+            {users.map((u) => (
+              <li key={u.email} className="flex items-center gap-3 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-gray-800">{u.email}</div>
+                  <div className="text-xs text-gray-400">
+                    {u.role}
+                    {u.last_login_at
+                      ? ` · last sign-in ${new Date(u.last_login_at).toLocaleDateString()}`
+                      : ' · never signed in'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRemoveUser(u.email)}
+                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form onSubmit={handleAddUser} className="flex gap-2">
+          <input
+            required
+            type="email"
+            value={userForm.email}
+            onChange={(e) => setUserForm((f) => ({ ...f, email: e.target.value }))}
+            placeholder="email@example.com"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+          />
+          <select
+            value={userForm.role}
+            onChange={(e) =>
+              setUserForm((f) => ({ ...f, role: e.target.value as 'admin' | 'picker' }))
+            }
+            className="border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 bg-white"
+          >
+            <option value="picker">picker</option>
+            <option value="admin">admin</option>
+          </select>
+          <button
+            type="submit"
+            disabled={userBusy || !userForm.email.trim()}
+            className="bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
+          >
+            {userBusy ? 'Adding…' : 'Add'}
+          </button>
+        </form>
       </div>
 
       {/* Tabata Tuesday week pick */}

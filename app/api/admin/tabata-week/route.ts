@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { fetchRide } from '@/lib/peloton'
 import { getFreshPelotonSession, transformRide } from '@/lib/sync'
 import { parseScheduledClassUrl, tabataWeekStart } from '@/lib/tabata'
+import { isAuthorized } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 // Edge runtime: may need to fetch the ride from Peloton (blocked from
@@ -22,8 +23,8 @@ export const runtime = 'edge'
 //   (falling back to the current week when the link has no timestamp).
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Pickers may set the week too — this is the one non-admin write.
+  if (!(await isAuthorized(req, ['admin', 'picker']))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

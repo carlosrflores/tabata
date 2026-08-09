@@ -1,7 +1,9 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import Link from 'next/link'
 import Breadcrumbs from '../components/Breadcrumbs'
+import SetWeekBox from './SetWeekBox'
 import { formatDuration, formatNumber } from '@/lib/format'
+import { getAppUser } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -206,7 +208,8 @@ function ResultsList({ week, compact = false }: { week: Week; compact?: boolean 
 
 export default async function TabataPage() {
   noStore()
-  const data = await getTabataData()
+  const [data, appUser] = await Promise.all([getTabataData(), getAppUser()])
+  const canPick = appUser?.role === 'admin' || appUser?.role === 'picker'
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -230,6 +233,7 @@ export default async function TabataPage() {
         </div>
       ) : (
         <>
+          {canPick && <SetWeekBox hasCurrent={Boolean(data.current)} />}
           {data.current ? (
             <div className="space-y-4">
               <ClassCard week={data.current} />

@@ -7,6 +7,7 @@ import {
   PERFORMANCE_GRAPH_DISCIPLINES,
 } from '@/lib/peloton'
 import { syncMember, syncAllMembers, type SyncTrigger } from '@/lib/sync'
+import { isAuthorized } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'edge'
@@ -14,9 +15,10 @@ export const runtime = 'edge'
 // Edge Runtime uses Cloudflare's network — different IPs than Lambda.
 // Peloton blocks most Vercel Lambda egress IPs (error_code 3020).
 // All Peloton API work (following list, sync) is routed through here.
+// Admin sessions allowed: the /admin UI drives syncs and the following
+// list through this route.
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
