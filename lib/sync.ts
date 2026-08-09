@@ -48,7 +48,7 @@ interface StoredCreds {
 // path entirely and return whatever access token is stored. This is the
 // graceful-fallback that lets the sync keep running before bootstrap is
 // updated to capture refresh tokens.
-async function getFreshPelotonSession(
+export async function getFreshPelotonSession(
   db: SupabaseAdmin,
   memberId: string,
   pelotonUserId: string
@@ -100,7 +100,7 @@ async function getFreshPelotonSession(
   return createSession(creds.peloton_bearer_token, pelotonUserId)
 }
 
-function transformRide(ride: PelotonRide, fallbackInstructorName?: string | null) {
+export function transformRide(ride: PelotonRide, fallbackInstructorName?: string | null) {
   return {
     id: ride.id,
     title: ride.title ?? null,

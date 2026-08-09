@@ -23,6 +23,11 @@ create table if not exists member_connect_codes (
 
 alter table member_connect_codes enable row level security;
 
+-- Data API grants (new public tables no longer auto-receive role grants).
+-- Service-role only — codes gate credential writes and must never be
+-- readable via the anon key.
+grant select, insert, update, delete on public.member_connect_codes to service_role;
+
 do $$ begin
   create policy "service role only on member_connect_codes"
     on member_connect_codes for all
