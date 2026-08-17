@@ -39,8 +39,7 @@ Next.js 14 App Router + TypeScript (strict) + Tailwind, backed by Supabase Postg
 
 **Where things run:**
 - Vercel hosts the UI and admin API routes.
-- `.github/workflows/peloton-sync.yml` runs the daily sync at 06:00 UTC from a GitHub Actions runner. GitHub's Azure egress isn't on Peloton's WAF blocklist; Vercel Lambda is. This is the primary cron.
-- `vercel.json` runs a second cron at the same time as a temporary backup during the GitHub-Actions cutover. Once it's been clean for a week, delete the `crons` entry.
+- `.github/workflows/peloton-sync.yml` runs the daily sync at 06:00 UTC from a GitHub Actions runner. GitHub's Azure egress isn't on Peloton's WAF blocklist; Vercel Lambda is. This is the only cron — the temporary Vercel backup cron was removed after the GitHub-Actions cutover proved stable.
 
 **Three layers worth understanding before editing:**
 
