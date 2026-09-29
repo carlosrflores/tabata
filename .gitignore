@@ -14,6 +14,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 
 # Vercel
 .vercel
@@ -33,3 +34,4 @@ yarn-error.log*
 
 # Claude Code per-user settings (project-scoped settings.json IS committed)
 .claude/settings.local.json
+.claude/worktrees/
