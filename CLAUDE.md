@@ -9,29 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` — `next lint` (ESLint with `eslint-config-next`). Note: ESLint isn't configured yet; first run prompts for setup.
 - `npx tsc --noEmit` — type-check the whole project. The only check that runs in CI today.
 - No test suite exists — there is no `npm test`.
-
-Ad-hoc DB queries against the Supabase project (loads `.env.local`, uses service-role key):
-
-```
-node scripts/db.mjs members
-node scripts/db.mjs workouts <member_id> [<since_iso>]
-node scripts/db.mjs ride <ride_id>
-node scripts/db.mjs synclog <member_id>
-node scripts/db.mjs raw <table> <select-string> '[{"col":"x","op":"eq","val":"y"}]'
-```
-
-Trigger a sync manually:
-
-```
-# From the GitHub Actions UI (primary path):
-gh workflow run "Peloton sync" -f trigger=manual
-
-# Or from the deployed Vercel UI:
-curl -H "Authorization: Bearer $CRON_SECRET" "https://<host>/api/debug?mode=sync&trigger=manual"
-curl -H "Authorization: Bearer $CRON_SECRET" "https://<host>/api/debug?mode=sync-member&memberId=<uuid>"
-```
-
-The admin pages at `/admin/health` ("Sync all members" button) and `/admin` ("sync" link per row) wrap these endpoints.
+- Ad-hoc DB queries (`scripts/db.mjs`) and manual sync triggers: see the `tabata-ops` skill.
 
 ## Architecture
 
@@ -79,19 +57,7 @@ Never import `getSupabaseAdmin` from a `'use client'` file.
 
 ### 3. Database schema (`supabase/`)
 
-Migrations are **plain SQL files applied manually in the Supabase SQL editor** — there is no framework-managed migration runner. Files are written to be idempotent (`if not exists`, `do $$ ... end $$` guards, `create or replace view`). Apply order if rebuilding from scratch:
-
-1. `schema.sql` — members, workouts, sync_log, `weekly_leaderboard` view, RLS
-2. `functions.sql` — `get_member_streaks` rpc, `current_week_stats` view
-3. `rides_migration.sql` — `rides` table, `workouts.ride_id` FK + backfill, `ride_comparison` and `ride_popularity` views
-4. `member_image_migration.sql`
-5. `sync_runs_migration.sql` — observability table feeding `/admin/health`
-6. `auth_refresh_migration.sql` — adds the three refresh-token columns to `member_credentials` and drops the vestigial `peloton_password_encrypted` / `peloton_session_cookie`
-7. `member_connect_codes_migration.sql` — per-member self-serve token bootstrap codes (see `docs/member-connect.md`)
-8. `tabata_weeks_migration.sql` — the weekly Tabata Tuesday class pick, feeds `/tabata`
-9. `app_users_migration.sql` — magic-link sign-in allowlist + roles (see `docs/auth.md`)
-
-When adding schema changes, write a new dated migration file under `supabase/` rather than mutating an existing one — and keep it idempotent so it can be re-run safely.
+Migrations are plain SQL applied manually in the Supabase SQL editor — never mutate an existing migration file; add a new idempotent one. Apply order and details: `supabase/CLAUDE.md`.
 
 **The "week" is Tuesday → Tuesday.** Both `weekly_leaderboard` and `current_week_stats` compute their bounds as `date_trunc('week', now()) + interval '1 day'` (Postgres weeks start Monday, +1 day = Tuesday). Anything UI-side that talks about "this week" must agree with that boundary.
 
