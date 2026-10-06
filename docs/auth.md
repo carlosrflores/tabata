@@ -15,7 +15,7 @@ gates admin surfaces.
   or admin is signed in).
 - **Dual auth on APIs** (`lib/auth.ts` → `isAuthorized`): every admin API
   accepts *either* a signed-in session with a sufficient role *or* the
-  `CRON_SECRET` bearer header. Machines (GitHub Actions, Vercel cron,
+  `CRON_SECRET` bearer header. Machines (GitHub Actions,
   curl, the iOS Shortcut) keep using the secret; humans use sessions.
   `/api/admin/tabata-week` additionally allows the `picker` role.
 - **Admin UI**: `app/admin/layout.tsx` redirects non-admins to `/login`.

@@ -1,7 +1,7 @@
 // Role-based authorization for admin surfaces.
 //
 // Two independent ways in:
-//   1. Machine callers (GitHub Actions, Vercel cron, curl, the iOS
+//   1. Machine callers (GitHub Actions, curl, the iOS
 //      Shortcut) present `Authorization: Bearer <CRON_SECRET>` — unchanged.
 //   2. Humans sign in via magic link; their session cookie maps to a row
 //      in app_users, which carries the role.

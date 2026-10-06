@@ -3,15 +3,12 @@ name: Peloton sync
 # Runs the Tabata Tuesday sync from a GitHub Actions runner. GitHub's
 # Azure egress range is currently unblocked by Peloton's Cloudflare WAF,
 # unlike Vercel Lambda — see docs/tabata-tuesday-hardening-brief.md
-# section 3.
-#
-# While this is bedding in, vercel.json still runs a parallel cron at the
-# same UTC time. Once we've seen ~a week of clean runs here, delete the
-# Vercel cron in a separate PR.
+# section 3. This is the only sync cron — the temporary Vercel backup
+# cron was removed once runs here proved stable.
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # 06:00 UTC daily, matches the prior Vercel cron
+    - cron: '0 6 * * *'  # 06:00 UTC daily
   workflow_dispatch:
     inputs:
       trigger:
@@ -31,9 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
