@@ -87,10 +87,6 @@ gh secret set NEXT_PUBLIC_SUPABASE_URL --body "<value>"
 gh secret set SUPABASE_SERVICE_ROLE_KEY --body "<value>"
 ```
 
-A second cron in `vercel.json` runs at the same time as a temporary backup
-during cutover. Remove it from `vercel.json` once GitHub Actions has been
-clean for ~a week.
-
 ### 5. Add more members
 
 Visit `/admin`, pick a rider you follow on Peloton from the dropdown.
