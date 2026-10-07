@@ -1,9 +1,10 @@
-import { unstable_noStore as noStore } from 'next/cache'
 import Link from 'next/link'
 import Breadcrumbs from '../components/Breadcrumbs'
 import SetWeekBox from './SetWeekBox'
 import { formatDuration, formatNumber } from '@/lib/format'
 import { getAppUser } from '@/lib/auth'
+import { getTabataData } from '@/lib/data'
+import PelotonImg from '../components/PelotonImg'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,12 +56,9 @@ interface TabataData {
   past: Week[]
 }
 
-async function getTabataData(): Promise<TabataData | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+async function loadTabataData(): Promise<TabataData | null> {
   try {
-    const res = await fetch(`${baseUrl}/api/tabata`, { cache: 'no-store' })
-    if (!res.ok) return null
-    return res.json()
+    return (await getTabataData()) as TabataData
   } catch {
     return null
   }
@@ -88,9 +86,9 @@ function formatWeekLabel(weekStart: string): string {
 
 function Avatar({ name, initials, image_url }: { name: string; initials: string; image_url: string | null }) {
   return image_url ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <PelotonImg
       src={image_url}
+      displayWidth={36}
       alt={name}
       className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
     />
@@ -107,9 +105,10 @@ function ClassCard({ week }: { week: Week }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white">
       {ride.image_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <PelotonImg
           src={ride.image_url}
+          displayWidth={672}
+          loading="eager"
           alt={ride.title ?? 'Class image'}
           className="h-44 w-full object-cover"
         />
@@ -207,8 +206,7 @@ function ResultsList({ week, compact = false }: { week: Week; compact?: boolean 
 }
 
 export default async function TabataPage() {
-  noStore()
-  const [data, appUser] = await Promise.all([getTabataData(), getAppUser()])
+  const [data, appUser] = await Promise.all([loadTabataData(), getAppUser()])
   const canPick = appUser?.role === 'admin' || appUser?.role === 'picker'
 
   return (

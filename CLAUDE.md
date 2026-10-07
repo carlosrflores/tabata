@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Next.js 14 App Router + TypeScript (strict) + Tailwind, backed by Supabase Postgres. Path alias `@/*` → repo root.
 
 **Where things run:**
-- Vercel hosts the UI and admin API routes.
+- Vercel hosts the UI and admin API routes. `vercel.json` pins Node functions to `sfo1`, next to the Supabase project (`us-west-1`) — keep them co-located; a cross-country region adds ~70ms to every query.
 - `.github/workflows/peloton-sync.yml` runs the daily sync at 06:00 UTC from a GitHub Actions runner. GitHub's Azure egress isn't on Peloton's WAF blocklist; Vercel Lambda is. This is the only cron, and **the only place syncs run** — the `/admin` "Sync" buttons call `POST /api/admin/sync`, which just dispatches this workflow (optionally with `member_id`). Syncs started on Vercel never completed and still rotated Peloton's refresh token, racing the cron; don't reintroduce a Vercel-side sync path.
 
 **Three layers worth understanding before editing:**
@@ -66,7 +66,9 @@ Migrations are plain SQL applied manually in the Supabase SQL editor — never m
 
 - API routes that hit Supabase set `export const dynamic = 'force-dynamic'` to opt out of static rendering. Keep this on any new route that reads server-only env vars.
 - API routes that call Peloton from Vercel set `export const runtime = 'edge'` — Vercel Lambda egress is blocked by Peloton's WAF, Cloudflare Edge currently isn't. The GitHub Actions runner doesn't need this — it runs on Azure IPs.
-- The home page (`app/page.tsx`) fetches its own `/api/leaderboard` via `NEXT_PUBLIC_BASE_URL` — needed so SSR works in production. Locally that env var should point at `http://localhost:3000`.
+- **Public pages are cached.** `/`, `/rides`, `/rides/[id]`, `/member/[id]` are ISR (`revalidate = 900`); their data comes from `lib/data.ts`, where every read is wrapped in `unstable_cache` under the `public-data` tag. Pages call those helpers directly — never `fetch` the site's own `/api/*` from a server component. Any write that changes public data must call `revalidatePublicData()`; the sync workflow hits `POST /api/revalidate` after each run. Don't query Supabase directly from a cached page (supabase-js's fetch would land in Next's Data Cache untagged and go stale) — add a helper to `lib/data.ts`.
+- Peloton images (`s3.amazonaws.com/peloton-*`, ~2 MB originals) render through `<PelotonImg displayWidth={…}>` (`app/components/PelotonImg.tsx`), which resizes via Peloton's image CDN and falls back to the original.
+- `middleware.ts` (Supabase session refresh) only matches routes that read the session; add a route to its `matcher` if it calls `getAppUser()`/`isAuthorized()` with a session.
 - Raw Peloton responses are stashed in `workouts.raw_data` / `rides.raw_data` (jsonb). Prefer adding a typed column + populating it in `transformWorkout`/`transformRide` over re-deriving from `raw_data` at read time.
 - The `workouts.ride_id` FK is `on delete set null` — fine to delete a ride row without cascading workouts.
 - `PERFORMANCE_GRAPH_DISCIPLINES` in `lib/peloton.ts` is the source of truth for "which disciplines have a performance graph?". Use it instead of hardcoding `'cycling'`.
@@ -75,11 +77,12 @@ Migrations are plain SQL applied manually in the Supabase SQL editor — never m
 
 Required in `.env.local` (see `.env.example`):
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_BASE_URL` — used by the home page's internal `fetch('/api/leaderboard')`
+- `NEXT_PUBLIC_BASE_URL` — absolute site URL for links in magic-link emails and member connect links
 - `CRON_SECRET` — gates `/api/debug`, `/api/members`, `/api/admin/*`
 - `GITHUB_DISPATCH_TOKEN` — fine-grained PAT (this repo, Actions: read/write) used by `/api/admin/sync` to dispatch the sync workflow. Only needed on Vercel.
 
 GitHub Actions secrets (configure via `gh secret set` or repo Settings → Secrets):
+- `CRON_SECRET` — same value as Vercel's; lets the workflow call `POST /api/revalidate` after a sync (skipped if unset)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 

@@ -50,3 +50,15 @@ jobs:
           SYNC_TRIGGER: ${{ inputs.trigger || 'cron' }}
           SYNC_MEMBER_ID: ${{ inputs.member_id }}
         run: npx tsx scripts/run-sync.ts "$SYNC_TRIGGER" "$SYNC_MEMBER_ID"
+
+      # Drop the site's cached pages so new workouts show up right away
+      # (pages otherwise refresh every 15 min). Runs even if some members
+      # failed; never fails the job.
+      - name: Refresh site cache
+        if: always()
+        continue-on-error: true
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET not set; skipping"; exit 0; fi
+          curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://tabata.humantag.com/api/revalidate

@@ -1,18 +1,23 @@
 import Link from 'next/link'
-import { unstable_noStore as noStore } from 'next/cache'
+import type { ComponentProps } from 'react'
 import MemberStatsClient from './MemberStatsClient'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 
-export const dynamic = 'force-dynamic'
+import { getMemberStats } from '@/lib/data'
 
-async function getMemberStats(id: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+// Rendered on first visit, then cached; refreshed on demand after each
+// sync (see lib/data.ts).
+export const revalidate = 900
+
+// No pages are built ahead of time; each one is rendered on first visit
+// and then served from cache (an empty list is what enables that).
+export async function generateStaticParams() {
+  return []
+}
+
+async function loadMemberStats(id: string) {
   try {
-    const res = await fetch(`${baseUrl}/api/members/${id}/stats`, {
-      cache: 'no-store',
-    })
-    if (!res.ok) return null
-    return res.json()
+    return await getMemberStats(id)
   } catch {
     return null
   }
@@ -23,8 +28,7 @@ export default async function MemberPage({
 }: {
   params: { id: string }
 }) {
-  noStore()
-  const data = await getMemberStats(params.id)
+  const data = await loadMemberStats(params.id)
 
   if (!data) {
     return (
@@ -45,5 +49,10 @@ export default async function MemberPage({
     )
   }
 
-  return <MemberStatsClient data={data} />
+  // Same JSON shape the stats API returns; the client's types are narrower.
+  return (
+    <MemberStatsClient
+      data={data as unknown as ComponentProps<typeof MemberStatsClient>['data']}
+    />
+  )
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { authenticatePeloton } from '@/lib/peloton'
 import { isAuthorized } from '@/lib/auth'
+import { revalidatePublicData } from '@/lib/data'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       if (credsErr) throw credsErr
     }
 
+    revalidatePublicData()
     return NextResponse.json({ success: true, member: { id: member.id, name: member.name }, message: `${name} added.` })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

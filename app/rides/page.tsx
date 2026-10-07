@@ -5,8 +5,7 @@
 // Public read, matching the leaderboard's RLS pattern.
 
 import Link from 'next/link';
-import { unstable_noStore as noStore } from 'next/cache';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getRidesIndex } from '@/lib/data';
 import {
   formatDuration,
   formatRelativeDate,
@@ -14,23 +13,19 @@ import {
 } from '@/lib/format';
 import type { RidePopularityRow } from '@/types';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import PelotonImg from '@/app/components/PelotonImg';
 
-export const dynamic = 'force-dynamic';
+// Statically cached; refreshed on demand after each sync (see lib/data.ts).
+export const revalidate = 900;
 
 export default async function RidesIndexPage() {
-  // See ride detail page for the explanation — Next.js Data Cache was
-  // serving stale supabase-js fetch results despite force-dynamic.
-  noStore();
-
-  const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from('ride_popularity')
-    .select('*')
-    .order('most_recent_attempt', { ascending: false })
-    .order('group_member_count', { ascending: false })
-    .limit(100);
-
-  const rides = (data ?? []) as RidePopularityRow[];
+  let rides: RidePopularityRow[] = [];
+  let error: { message: string } | null = null;
+  try {
+    rides = (await getRidesIndex()) as RidePopularityRow[];
+  } catch (e) {
+    error = { message: e instanceof Error ? e.message : String(e) };
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -74,9 +69,9 @@ export default async function RidesIndexPage() {
                 className="ring-card group flex h-full gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-purple-200"
               >
                 {r.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <PelotonImg
                     src={r.image_url}
+                    displayWidth={112}
                     alt=""
                     className="h-20 w-28 flex-shrink-0 rounded-xl object-cover ring-1 ring-black/5"
                   />
