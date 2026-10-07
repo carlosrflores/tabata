@@ -5,19 +5,23 @@
 // runtime's ~25-second budget.
 //
 // Usage:
-//   npx tsx scripts/run-sync.ts [trigger]
+//   npx tsx scripts/run-sync.ts [trigger] [memberId]
 // where trigger is 'cron' | 'manual' | 'backfill' (defaults to 'cron').
+// With a memberId, syncs just that member (no sync_runs row — same as
+// the per-member admin button always did).
 
-import { syncAllMembers, type SyncTrigger } from '@/lib/sync'
+import { syncAllMembers, syncMember, type SyncTrigger } from '@/lib/sync'
 
 async function main() {
   const arg = process.argv[2]
   const trigger: SyncTrigger =
     arg === 'cron' || arg === 'manual' || arg === 'backfill' ? arg : 'cron'
 
-  console.log(`[run-sync] starting with trigger=${trigger}`)
+  const memberId = process.argv[3] || ''
+
+  console.log(`[run-sync] starting with trigger=${trigger}${memberId ? ` member=${memberId}` : ''}`)
   const started = Date.now()
-  const results = await syncAllMembers(trigger)
+  const results = memberId ? [await syncMember(memberId)] : await syncAllMembers(trigger)
   const durationSec = ((Date.now() - started) / 1000).toFixed(1)
 
   const totalAdded = results.reduce((sum, r) => sum + r.workoutsAdded, 0)

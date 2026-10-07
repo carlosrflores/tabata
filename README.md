@@ -52,6 +52,7 @@ variables before the first deploy:
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key from step 1 |
 | `NEXT_PUBLIC_BASE_URL` | Your Vercel URL (e.g. `https://tabata.example.com`) |
 | `CRON_SECRET` | A random string you generate — gates `/admin` and admin API routes |
+| `GITHUB_DISPATCH_TOKEN` | Fine-grained GitHub PAT (this repo, **Actions: Read and write**) — lets the `/admin` Sync buttons queue the GitHub Actions workflow |
 
 Deploy.
 

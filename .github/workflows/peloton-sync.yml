@@ -16,6 +16,11 @@ on:
         required: false
         default: 'manual'
         type: string
+      member_id:
+        description: 'Sync only this member (uuid). Blank = all members.'
+        required: false
+        default: ''
+        type: string
 
 # Prevent overlap if a manual dispatch fires while the scheduled run is
 # still going. Don't cancel the in-progress run — let it finish.
@@ -41,4 +46,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npx tsx scripts/run-sync.ts ${{ inputs.trigger || 'cron' }}
+          # Inputs pass through env (not inline expressions) so they can't inject shell.
+          SYNC_TRIGGER: ${{ inputs.trigger || 'cron' }}
+          SYNC_MEMBER_ID: ${{ inputs.member_id }}
+        run: npx tsx scripts/run-sync.ts "$SYNC_TRIGGER" "$SYNC_MEMBER_ID"

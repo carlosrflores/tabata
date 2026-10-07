@@ -16,12 +16,8 @@ node scripts/db.mjs raw <table> <select-string> '[{"col":"x","op":"eq","val":"y"
 Trigger a sync manually:
 
 ```
-# From the GitHub Actions UI (primary path):
 gh workflow run "Peloton sync" -f trigger=manual
-
-# Or from the deployed Vercel UI:
-curl -H "Authorization: Bearer $CRON_SECRET" "https://<host>/api/debug?mode=sync&trigger=manual"
-curl -H "Authorization: Bearer $CRON_SECRET" "https://<host>/api/debug?mode=sync-member&memberId=<uuid>"
+gh workflow run "Peloton sync" -f trigger=manual -f member_id=<uuid>   # one member
 ```
 
-The admin pages at `/admin/health` ("Sync all members" button) and `/admin` ("sync" link per row) wrap these endpoints.
+Syncs only run on GitHub Actions. The admin pages at `/admin/health` ("Sync all members" button) and `/admin` ("sync" link per row) call `POST /api/admin/sync`, which dispatches the same workflow. The old `/api/debug?mode=sync` and `/api/sync` paths are gone.
