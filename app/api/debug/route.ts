@@ -6,7 +6,6 @@ import {
   fetchFollowing,
   PERFORMANCE_GRAPH_DISCIPLINES,
 } from '@/lib/peloton'
-import { syncMember, syncAllMembers, type SyncTrigger } from '@/lib/sync'
 import { isAuthorized } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -14,9 +13,9 @@ export const runtime = 'edge'
 
 // Edge Runtime uses Cloudflare's network — different IPs than Lambda.
 // Peloton blocks most Vercel Lambda egress IPs (error_code 3020).
-// All Peloton API work (following list, sync) is routed through here.
-// Admin sessions allowed: the /admin UI drives syncs and the following
-// list through this route.
+// Peloton API work the /admin UI needs (following list, diagnostics) is
+// routed through here. Syncs are not: they run on GitHub Actions only,
+// dispatched via /api/admin/sync.
 export async function GET(req: NextRequest) {
   if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -136,37 +135,6 @@ export async function GET(req: NextRequest) {
       } catch { failed++ }
     }
     return NextResponse.json({ done: rows.length < batchSize, updated, failed, next_offset: offset + rows.length })
-  }
-
-  // ?mode=sync — sync all active members (used by cron and admin "Sync all" button)
-  // ?trigger=cron|manual|backfill — recorded on the sync_runs row. Defaults to 'manual'.
-  if (mode === 'sync') {
-    const triggerParam = req.nextUrl.searchParams.get('trigger')
-    const trigger: SyncTrigger =
-      triggerParam === 'cron' || triggerParam === 'manual' || triggerParam === 'backfill'
-        ? triggerParam
-        : 'manual'
-    try {
-      const results = await syncAllMembers(trigger)
-      const totalAdded = results.reduce((sum, r) => sum + r.workoutsAdded, 0)
-      return NextResponse.json({ results, total_workouts_added: totalAdded, synced_at: new Date().toISOString() })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return NextResponse.json({ error: message }, { status: 500 })
-    }
-  }
-
-  // ?mode=sync-member&memberId=X — sync a single member
-  if (mode === 'sync-member') {
-    const memberId = req.nextUrl.searchParams.get('memberId')
-    if (!memberId) return NextResponse.json({ error: 'memberId required' }, { status: 400 })
-    try {
-      const result = await syncMember(memberId)
-      return NextResponse.json({ results: [result], synced_at: new Date().toISOString() })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return NextResponse.json({ error: message }, { status: 500 })
-    }
   }
 
   // Default: diagnostic info

@@ -144,20 +144,21 @@ export default function AdminPage() {
   }
 
   async function triggerSync(memberId?: string) {
-    setSyncStatus('Syncing...')
-    const url = memberId ? `/api/debug?mode=sync-member&memberId=${memberId}` : '/api/debug?mode=sync&trigger=manual'
-    const res = await fetch(url)
-    const data = await res.json()
+    setSyncStatus('Queuing...')
+    const res = await fetch('/api/admin/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(memberId ? { memberId } : {}),
+    })
+    const data = await res.json().catch(() => ({}))
 
     if (res.ok) {
-      const total = data.total_workouts_added ?? data.results?.[0]?.workoutsAdded ?? 0
-      setSyncStatus(`Done — ${total} new workout${total !== 1 ? 's' : ''} added`)
-      loadMembers()
+      setSyncStatus('Queued on GitHub Actions — results in ~2 min (see Health)')
     } else {
-      setSyncStatus(`Error: ${data.error}`)
+      setSyncStatus(`Error: ${data.error ?? res.status}`)
     }
 
-    setTimeout(() => setSyncStatus(null), 5000)
+    setTimeout(() => setSyncStatus(null), 8000)
   }
 
   // Allowlist (app_users) management
@@ -291,7 +292,7 @@ export default function AdminPage() {
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-400 mb-4">Runs automatically daily at 6am. Use this to sync manually.</p>
+        <p className="text-xs text-gray-400 mb-4">Runs automatically daily at 6am UTC on GitHub Actions. Use this to queue a run now.</p>
         <button
           onClick={() => triggerSync()}
           className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"

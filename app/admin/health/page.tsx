@@ -59,22 +59,22 @@ export default function HealthPage() {
 
   async function triggerSync() {
     setSyncing(true)
-    setSyncStatus('Syncing…')
+    setSyncStatus('Queuing…')
     try {
-      const res = await fetch('/api/debug?mode=sync&trigger=manual')
-      const data = await res.json()
+      const res = await fetch('/api/admin/sync', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
-        const total = data.total_workouts_added ?? 0
-        setSyncStatus(`Done — ${total} new workout${total !== 1 ? 's' : ''} added`)
-        loadRuns()
+        setSyncStatus('Queued on GitHub Actions — refresh in ~2 min')
+        // The run takes a minute or two; pick up its sync_runs row.
+        setTimeout(loadRuns, 120_000)
       } else {
-        setSyncStatus(`Error: ${data.error}`)
+        setSyncStatus(`Error: ${data.error ?? res.status}`)
       }
     } catch (e) {
       setSyncStatus(`Error: ${e instanceof Error ? e.message : String(e)}`)
     }
     setSyncing(false)
-    setTimeout(() => setSyncStatus(null), 6000)
+    setTimeout(() => setSyncStatus(null), 8000)
   }
 
   // Banner calculations.
@@ -141,14 +141,14 @@ export default function HealthPage() {
           )}
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          Runs syncAllMembers with trigger=manual. Refreshes the table when done.
+          Queues the Peloton sync workflow on GitHub Actions (trigger=manual). The run appears below in a minute or two.
         </p>
         <button
           onClick={triggerSync}
           disabled={syncing}
           className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >
-          {syncing ? 'Syncing…' : 'Sync all members'}
+          {syncing ? 'Queuing…' : 'Sync all members'}
         </button>
       </div>
 
