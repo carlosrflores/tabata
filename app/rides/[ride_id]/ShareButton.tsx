@@ -87,7 +87,7 @@ export default function ShareButton({
         onClick={handleClick}
         aria-label="Share ride"
         title="Share"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-500 hover:bg-purple-50 hover:text-purple-600 border border-gray-100 shadow-sm transition-colors"
+        className="press flex h-8 w-8 items-center justify-center rounded-full border border-gray-100 bg-white/90 text-gray-500 shadow-sm transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600"
       >
         <ShareIcon />
       </button>
@@ -100,21 +100,21 @@ export default function ShareButton({
           <a
             href={mailto}
             onClick={stop}
-            className="block px-3 py-2 text-gray-700 hover:bg-gray-50"
+            className="block px-3 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-700"
           >
             Email
           </a>
           <a
             href={sms}
             onClick={stop}
-            className="block px-3 py-2 text-gray-700 hover:bg-gray-50"
+            className="block px-3 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-700"
           >
             Text message
           </a>
           <button
             type="button"
             onClick={handleCopy}
-            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-purple-50 hover:text-purple-700"
           >
             {copied ? 'Copied!' : 'Copy link'}
           </button>

@@ -12,6 +12,7 @@ import {
 import type { Workout, PersonalRecord } from '@/types'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 import PelotonImg from '@/app/components/PelotonImg'
+import RowChevron from '@/app/components/RowChevron'
 
 interface MemberData {
   member: {
@@ -134,7 +135,7 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
                 const RowInner = (
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-gray-900">
+                      <div className="truncate text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
                         {w.title}
                       </div>
                       <div className="mt-0.5 text-xs text-gray-500">
@@ -171,9 +172,10 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
                     {w.ride_id ? (
                       <Link
                         href={`/rides/${w.ride_id}`}
-                        className="block px-5 py-3 transition-colors hover:bg-gray-50"
+                        className="link-row group flex items-center gap-2 px-5 py-3"
                       >
-                        {RowInner}
+                        <div className="min-w-0 flex-1">{RowInner}</div>
+                        <RowChevron />
                       </Link>
                     ) : (
                       <div className="px-5 py-3">{RowInner}</div>

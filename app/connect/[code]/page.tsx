@@ -7,6 +7,7 @@
 // credential, validated server-side by /api/connect.
 
 import { useEffect, useState } from 'react'
+import Spinner from '@/app/components/Spinner'
 
 const CONSOLE_SNIPPET = `copy(JSON.stringify((()=>{for(const k of Object.keys(localStorage).filter(x=>x.startsWith('@@auth0spajs@@::'))){const b=JSON.parse(localStorage.getItem(k));const body=b?.body??b;if(body?.access_token)return{source:'localStorage',access_token:body.access_token,refresh_token:body.refresh_token??null,client_id:body.client_id??k.split('::')[1]??null,expires_at:body.expires_at??b.expiresAt??null};}return null;})(),null,2));console.log('Bundle copied.');`
 
@@ -213,7 +214,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
             <button
               type="button"
               onClick={handleCopySnippet}
-              className="absolute right-2 top-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 shadow-sm hover:bg-gray-50"
+              className="press absolute right-2 top-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 shadow-sm transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
@@ -259,8 +260,9 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
         type="button"
         onClick={handleSubmit}
         disabled={!parsedOk || submitting}
-        className="mt-5 w-full rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-3 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-50"
+        className="press mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-3 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-50"
       >
+        {submitting && <Spinner />}
         {submitting ? 'Connecting…' : 'Connect my Peloton'}
       </button>
 

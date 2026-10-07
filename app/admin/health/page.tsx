@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
+import Spinner from '@/app/components/Spinner'
 
 interface SyncRun {
   id: string
@@ -146,8 +147,9 @@ export default function HealthPage() {
         <button
           onClick={triggerSync}
           disabled={syncing}
-          className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 disabled:opacity-50"
         >
+          {syncing && <Spinner />}
           {syncing ? 'Queuing…' : 'Sync all members'}
         </button>
       </div>
@@ -157,8 +159,10 @@ export default function HealthPage() {
           <h2 className="text-sm font-medium text-gray-900">Recent runs</h2>
           <button
             onClick={loadRuns}
-            className="text-xs text-gray-400 hover:text-purple-500 transition-colors"
+            disabled={loading}
+            className="link-subtle inline-flex items-center gap-1 text-xs disabled:opacity-50"
           >
+            {loading && <Spinner />}
             refresh
           </button>
         </div>

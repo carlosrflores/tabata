@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Spinner from '../components/Spinner'
 
 export default function SetWeekBox({ hasCurrent }: { hasCurrent: boolean }) {
   const router = useRouter()
@@ -43,7 +44,7 @@ export default function SetWeekBox({ hasCurrent }: { hasCurrent: boolean }) {
       <div className="mb-4 text-right">
         <button
           onClick={() => setOpen(true)}
-          className="text-xs text-gray-400 transition-colors hover:text-purple-500"
+          className="link-subtle text-xs"
         >
           change this week&apos;s class
         </button>
@@ -79,8 +80,9 @@ export default function SetWeekBox({ hasCurrent }: { hasCurrent: boolean }) {
         <button
           type="submit"
           disabled={busy || !url.trim()}
-          className="flex-shrink-0 rounded-lg bg-purple-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50"
+          className="press inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-purple-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50"
         >
+          {busy && <Spinner />}
           {busy ? 'Saving…' : 'Set'}
         </button>
       </form>

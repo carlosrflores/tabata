@@ -14,6 +14,7 @@ import {
 import type { RidePopularityRow } from '@/types';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import PelotonImg from '@/app/components/PelotonImg';
+import RowChevron from '@/app/components/RowChevron';
 
 // Statically cached; refreshed on demand after each sync (see lib/data.ts).
 export const revalidate = 900;
@@ -66,7 +67,7 @@ export default async function RidesIndexPage() {
             <li key={r.ride_id}>
               <Link
                 href={`/rides/${r.ride_id}`}
-                className="ring-card group flex h-full gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-purple-200"
+                className="ring-card link-card group flex h-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4"
               >
                 {r.image_url ? (
                   <PelotonImg
@@ -83,7 +84,7 @@ export default async function RidesIndexPage() {
                   </div>
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <h3 className="line-clamp-2 text-sm font-medium text-gray-900 group-hover:text-purple-700">
+                  <h3 className="line-clamp-2 text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
                     {r.title ?? 'Untitled ride'}
                   </h3>
                   <p className="mt-0.5 truncate text-xs text-gray-500">
@@ -108,6 +109,7 @@ export default async function RidesIndexPage() {
                     </span>
                   </div>
                 </div>
+                <RowChevron />
               </Link>
             </li>
           ))}

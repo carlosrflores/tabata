@@ -23,7 +23,7 @@ export default async function AdminLayout({
         <form action="/auth/signout" method="post">
           <button
             type="submit"
-            className="rounded-full border border-gray-200 px-2.5 py-1 transition-colors hover:bg-gray-50 hover:text-gray-600"
+            className="press rounded-full border border-gray-200 px-2.5 py-1 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
           >
             Sign out
           </button>

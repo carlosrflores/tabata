@@ -118,7 +118,7 @@ function ClassCard({ week }: { week: Week }) {
           This week&apos;s class
         </div>
         <h2 className="mt-1 text-lg font-semibold text-gray-900">
-          <Link href={`/rides/${ride.id}`} className="hover:text-purple-700">
+          <Link href={`/rides/${ride.id}`} className="link-text decoration-purple-200">
             {ride.title ?? 'Untitled class'}
           </Link>
         </h2>
@@ -272,7 +272,7 @@ export default async function TabataPage() {
                         {week.ride ? (
                           <Link
                             href={`/rides/${week.ride.id}`}
-                            className="hover:text-purple-700"
+                            className="link-text decoration-purple-200"
                           >
                             {week.ride.title ?? 'Untitled class'}
                           </Link>

@@ -195,7 +195,7 @@ export default async function RideDetailPage({ params }: Props) {
               href={pelotonClassUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-purple-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-purple-700"
+              className="press mt-4 inline-flex items-center gap-1.5 rounded-full bg-purple-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-all hover:bg-purple-700 hover:shadow-md"
             >
               Open in Peloton
               <ExternalLinkIcon />

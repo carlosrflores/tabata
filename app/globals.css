@@ -14,6 +14,66 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     text-rendering: optimizeLegibility;
   }
+
+  /* Anything clickable gets the hand cursor; disabled buttons say so. */
+  a[href],
+  button:not(:disabled),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Keyboard focus is always visible. */
+  :focus-visible {
+    outline: 2px solid theme('colors.purple.500');
+    outline-offset: 2px;
+  }
+
+  /* While a page navigation is in flight (see NavigationProgress). */
+  html.is-navigating,
+  html.is-navigating * {
+    cursor: progress !important;
+  }
+  a[data-pending] {
+    opacity: 0.6;
+    animation: pending-pulse 1s ease-in-out infinite;
+  }
+  @keyframes pending-pulse {
+    50% {
+      opacity: 0.4;
+    }
+  }
+}
+
+/* Shared affordances so links and buttons look and feel clickable. */
+@layer components {
+  /* Inline text link: underlined at rest, stronger on hover. */
+  .link-text {
+    @apply text-purple-700 underline decoration-purple-300 decoration-1 underline-offset-2 transition-colors hover:text-purple-900 hover:decoration-purple-600 hover:decoration-2;
+  }
+
+  /* Small secondary text action ("remove", "refresh", "sync"…). */
+  .link-subtle {
+    @apply text-gray-500 underline-offset-2 transition-colors hover:text-purple-600 hover:underline;
+  }
+
+  /* Whole-card link: lifts and gains a purple edge on hover, presses in on click. */
+  .link-card {
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-md active:translate-y-0 active:scale-[0.99];
+  }
+
+  /* Whole-row link inside a list: tints on hover, darker while pressed. */
+  .link-row {
+    @apply transition-colors hover:bg-purple-50/70 active:bg-purple-100/70;
+  }
+
+  /* Tactile press for buttons (instant scale; pairs with any transition-* utility). */
+  .press {
+    @apply active:scale-[0.97] disabled:active:scale-100;
+  }
 }
 
 @layer utilities {
