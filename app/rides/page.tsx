@@ -14,6 +14,7 @@ import {
 } from '@/lib/format';
 import type { RidePopularityRow } from '@/types';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import PelotonImg from '@/app/components/PelotonImg';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,9 +75,9 @@ export default async function RidesIndexPage() {
                 className="ring-card group flex h-full gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-purple-200"
               >
                 {r.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <PelotonImg
                     src={r.image_url}
+                    displayWidth={112}
                     alt=""
                     className="h-20 w-28 flex-shrink-0 rounded-xl object-cover ring-1 ring-black/5"
                   />

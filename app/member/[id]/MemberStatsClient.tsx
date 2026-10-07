@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import type { Workout, PersonalRecord } from '@/types'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
+import PelotonImg from '@/app/components/PelotonImg'
 
 interface MemberData {
   member: {
@@ -38,9 +39,10 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
       {/* Member header */}
       <section className="ring-card mb-6 flex items-center gap-4 rounded-3xl border border-gray-100 bg-white p-5">
         {member.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <PelotonImg
             src={member.image_url}
+            displayWidth={56}
+            loading="eager"
             alt={member.name}
             className="h-14 w-14 flex-shrink-0 rounded-full object-cover shadow ring-4 ring-white"
           />

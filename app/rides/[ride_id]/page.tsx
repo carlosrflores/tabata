@@ -16,6 +16,7 @@ import type {
   RideComparisonRow,
   ActiveMember,
 } from '@/types';
+import PelotonImg from '@/app/components/PelotonImg';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,10 +110,10 @@ export default async function RideDetailPage({ params }: Props) {
       <section className="ring-card relative mb-6 overflow-hidden rounded-3xl border border-gray-100 bg-white">
         {ride.image_url && (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <PelotonImg
               src={ride.image_url}
-              alt=""
+              displayWidth={240}
+              loading="eager"
               aria-hidden
               className="absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-2xl"
             />
@@ -122,10 +123,10 @@ export default async function RideDetailPage({ params }: Props) {
 
         <div className="relative flex flex-col gap-5 p-5 sm:flex-row sm:p-6">
           {ride.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <PelotonImg
               src={ride.image_url}
-              alt=""
+              displayWidth={420}
+              loading="eager"
               className="h-40 w-full flex-shrink-0 rounded-2xl object-cover ring-1 ring-black/5 sm:h-32 sm:w-52"
             />
           ) : (
@@ -148,9 +149,9 @@ export default async function RideDetailPage({ params }: Props) {
             {ride.instructor_name && (
               <div className="mt-3 flex items-center gap-3">
                 {ride.instructor_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <PelotonImg
                     src={ride.instructor_image_url}
+                    displayWidth={40}
                     alt=""
                     className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow"
                   />

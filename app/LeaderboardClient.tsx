@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { LeaderboardEntry } from '@/types'
+import PelotonImg from './components/PelotonImg'
 
 interface LeaderboardData {
   leaderboard: LeaderboardEntry[]
@@ -54,9 +55,9 @@ function Avatar({
   if (imageUrl) {
     const ringColor = RANK_RING_COLOR[rank] ?? 'ring-gray-200'
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <PelotonImg
         src={imageUrl}
+        displayWidth={56}
         alt={initials}
         className={`${sizeClass} flex-shrink-0 rounded-full object-cover ring-2 ${ringColor}`}
       />
