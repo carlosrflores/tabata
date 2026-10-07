@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Spinner from '@/app/components/Spinner'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -55,8 +56,9 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={busy || !email.trim()}
-        className="w-full rounded-lg bg-purple-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50"
+        className="press inline-flex w-full items-center justify-center gap-2 rounded-lg bg-purple-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50"
       >
+        {busy && <Spinner />}
         {busy ? 'Sending…' : 'Email me a sign-in link'}
       </button>
     </form>

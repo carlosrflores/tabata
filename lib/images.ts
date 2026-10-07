@@ -4,11 +4,13 @@
 // through it at roughly 2x the displayed width for sharp retina rendering.
 // Not an official API, so PelotonImg falls back to the original on error.
 
-const PELOTON_S3 = 'https://s3.amazonaws.com/peloton-'
+// Both S3 URL styles appear in Peloton data: path-style
+// (s3.amazonaws.com/peloton-…) and virtual-hosted (peloton-….s3.amazonaws.com).
+const PELOTON_S3 = /^https:\/\/(s3\.amazonaws\.com\/peloton-|peloton-[\w-]+\.s3\.amazonaws\.com\/)/
 const RESIZER = 'https://res.cloudinary.com/peloton-cycle/image/fetch'
 
 export function pelotonImageUrl(src: string, displayWidth: number): string {
-  if (!src.startsWith(PELOTON_S3)) return src
+  if (!PELOTON_S3.test(src)) return src
   const w = Math.round(displayWidth * 2)
   return `${RESIZER}/f_auto,q_auto,w_${w}/${src}`
 }

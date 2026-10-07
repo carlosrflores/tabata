@@ -40,7 +40,7 @@ export default async function MemberPage({
           <p className="text-sm text-gray-400">Member not found.</p>
           <Link
             href="/"
-            className="mt-2 inline-block text-sm font-medium text-purple-600 hover:text-purple-700"
+            className="link-text mt-2 inline-block text-sm font-medium"
           >
             Back to leaderboard
           </Link>

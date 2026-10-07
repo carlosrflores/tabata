@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
+import Spinner from '@/app/components/Spinner'
 
 interface BootstrapResponse {
   ok: boolean
@@ -239,14 +240,15 @@ export default function PelotonBootstrapPage() {
         <button
           type="submit"
           disabled={submitting || !accessToken.trim()}
-          className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 disabled:opacity-50"
         >
+          {submitting && <Spinner />}
           {submitting ? 'Validating…' : 'Bootstrap'}
         </button>
       </form>
 
       <p className="mt-4 text-xs text-gray-400">
-        <Link href="/admin" className="text-purple-500 hover:text-purple-600">
+        <Link href="/admin" className="link-text">
           ← back to admin
         </Link>
       </p>

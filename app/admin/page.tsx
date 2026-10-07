@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
+import Spinner from '@/app/components/Spinner'
 
 interface Member {
   id: string
@@ -32,6 +33,8 @@ export default function AdminPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  // 'all', a member id, or null: which sync button is waiting on the API.
+  const [syncBusy, setSyncBusy] = useState<string | null>(null)
   const [linkStatus, setLinkStatus] = useState<Record<string, string>>({})
 
   // Add-member form state
@@ -145,17 +148,23 @@ export default function AdminPage() {
 
   async function triggerSync(memberId?: string) {
     setSyncStatus('Queuing...')
-    const res = await fetch('/api/admin/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(memberId ? { memberId } : {}),
-    })
-    const data = await res.json().catch(() => ({}))
-
-    if (res.ok) {
-      setSyncStatus('Queued on GitHub Actions — results in ~2 min (see Health)')
-    } else {
-      setSyncStatus(`Error: ${data.error ?? res.status}`)
+    setSyncBusy(memberId ?? 'all')
+    try {
+      const res = await fetch('/api/admin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(memberId ? { memberId } : {}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setSyncStatus('Queued on GitHub Actions — results in ~2 min (see Health)')
+      } else {
+        setSyncStatus(`Error: ${data.error ?? res.status}`)
+      }
+    } catch (e) {
+      setSyncStatus(`Error: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setSyncBusy(null)
     }
 
     setTimeout(() => setSyncStatus(null), 8000)
@@ -295,8 +304,10 @@ export default function AdminPage() {
         <p className="text-xs text-gray-400 mb-4">Runs automatically daily at 6am UTC on GitHub Actions. Use this to queue a run now.</p>
         <button
           onClick={() => triggerSync()}
-          className="text-sm border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"
+          disabled={syncBusy !== null}
+          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 disabled:opacity-50"
         >
+          {syncBusy === 'all' && <Spinner />}
           Sync all members
         </button>
       </div>
@@ -311,7 +322,7 @@ export default function AdminPage() {
           <li>
             <Link
               href="/admin/peloton-bootstrap"
-              className="group flex items-start justify-between gap-3 px-5 py-3 transition-colors hover:bg-gray-50"
+              className="link-row group flex items-start justify-between gap-3 px-5 py-3"
             >
               <div className="min-w-0">
                 <div className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
@@ -329,7 +340,7 @@ export default function AdminPage() {
           <li>
             <Link
               href="/admin/health"
-              className="group flex items-start justify-between gap-3 px-5 py-3 transition-colors hover:bg-gray-50"
+              className="link-row group flex items-start justify-between gap-3 px-5 py-3"
             >
               <div className="min-w-0">
                 <div className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
@@ -381,7 +392,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   onClick={() => handleRemoveUser(u.email)}
-                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                  className="text-xs text-gray-400 underline-offset-2 transition-colors hover:text-red-600 hover:underline"
                 >
                   remove
                 </button>
@@ -411,8 +422,9 @@ export default function AdminPage() {
           <button
             type="submit"
             disabled={userBusy || !userForm.email.trim()}
-            className="bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
+            className="press inline-flex items-center gap-2 bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
           >
+            {userBusy && <Spinner />}
             {userBusy ? 'Adding…' : 'Add'}
           </button>
         </form>
@@ -426,7 +438,7 @@ export default function AdminPage() {
         <p className="text-xs text-gray-400 mb-4">
           Paste the scheduled-class share link (the one Stephanie texts the
           group). The class and week are read from the link and shown on the{' '}
-          <a href="/tabata" className="text-purple-500 hover:text-purple-600">
+          <a href="/tabata" className="link-text">
             /tabata
           </a>{' '}
           page.
@@ -454,8 +466,9 @@ export default function AdminPage() {
           <button
             type="submit"
             disabled={tabataBusy || !tabataUrl.trim()}
-            className="bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
+            className="press inline-flex items-center gap-2 bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
           >
+            {tabataBusy && <Spinner />}
             {tabataBusy ? 'Saving…' : 'Set class'}
           </button>
         </form>
@@ -612,8 +625,9 @@ export default function AdminPage() {
           <button
             type="submit"
             disabled={submitting || (!isOwnerSetup && !form.peloton_user_id)}
-            className="w-full bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
+            className="press inline-flex w-full items-center justify-center gap-2 bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
           >
+            {submitting && <Spinner />}
             {submitting ? (isOwnerSetup ? 'Verifying token…' : 'Adding member…') : 'Add member'}
           </button>
         </form>
@@ -670,14 +684,16 @@ export default function AdminPage() {
                 <button
                   onClick={() => copyConnectLink(member.id)}
                   title="Copy a personal /connect link for this member. Minting a new link invalidates the old one."
-                  className="text-xs text-gray-400 hover:text-purple-500 transition-colors"
+                  className="link-subtle text-xs"
                 >
                   connect link
                 </button>
                 <button
                   onClick={() => triggerSync(member.id)}
-                  className="text-xs text-gray-400 hover:text-purple-500 transition-colors"
+                  disabled={syncBusy !== null}
+                  className="link-subtle inline-flex items-center gap-1 text-xs disabled:opacity-50"
                 >
+                  {syncBusy === member.id && <Spinner />}
                   sync
                 </button>
               </div>
