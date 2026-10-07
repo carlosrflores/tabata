@@ -4,6 +4,7 @@ import { fetchRide } from '@/lib/peloton'
 import { getFreshPelotonSession, transformRide } from '@/lib/sync'
 import { parseScheduledClassUrl, tabataWeekStart } from '@/lib/tabata'
 import { isAuthorized } from '@/lib/auth'
+import { revalidatePublicData } from '@/lib/data'
 
 export const dynamic = 'force-dynamic'
 // Edge runtime: may need to fetch the ride from Peloton (blocked from
@@ -121,6 +122,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  revalidatePublicData()
   return NextResponse.json({
     ok: true,
     week_start: weekStart,

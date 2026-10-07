@@ -36,8 +36,17 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Only routes that read the session. Public pages and their data APIs
+  // skip it: the getUser() call is a network round trip to Supabase Auth,
+  // and the public pages are served from cache anyway.
   matcher: [
-    // Skip static assets; run everywhere else (pages + API routes).
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/admin/:path*',
+    '/api/admin/:path*',
+    '/api/debug',
+    '/api/members',
+    '/api/revalidate',
+    '/tabata',
+    '/login',
+    '/auth/:path*',
   ],
 }
