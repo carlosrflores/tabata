@@ -2,7 +2,7 @@
 
 // Sortable comparison table for /rides/[ride_id].
 // Sort state persists in the URL (?sort=...&dir=...) so links are shareable.
-// Each numeric cell has a faint purple sparkline behind it showing the value's
+// Each numeric cell has a faint brand-red sparkline behind it showing the value's
 // position vs. the column max — instant visual ranking without reading numbers.
 
 import { useMemo } from 'react';
@@ -125,7 +125,7 @@ export default function RideDetailClient({ rows }: Props) {
                 <button
                   onClick={() => setSort(col.key)}
                   title={`Sort by ${col.label}`}
-                  className="press -mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase transition-colors hover:bg-purple-50 hover:text-purple-600"
+                  className="press -mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase transition-colors hover:bg-brand-50 hover:text-brand-600"
                 >
                   {col.label}
                   {sort === col.key && (
@@ -146,21 +146,21 @@ export default function RideDetailClient({ rows }: Props) {
               <tr
                 key={row.member_id}
                 className={`border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/60 ${
-                  isLeader ? 'bg-purple-50/40' : ''
+                  isLeader ? 'bg-brand-50/40' : ''
                 }`}
               >
                 {/* Member */}
                 <td className="whitespace-nowrap px-3 py-3">
                   <Link
                     href={`/member/${row.member_id}`}
-                    className="group -mx-1 inline-flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-purple-50/70 active:bg-purple-100/70"
+                    className="group -mx-1 inline-flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-brand-50/70 active:bg-brand-100/70"
                   >
-                    <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-purple-100 text-xs font-medium text-purple-800 ring-2 ring-white shadow-sm">
+                    <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-medium text-brand-800 ring-2 ring-white shadow-sm">
                       {row.member_initials}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
+                        <span className="text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-brand-700 group-hover:underline">
                           {row.member_name}
                         </span>
                         {row.is_personal_record && (
@@ -253,7 +253,7 @@ function NumericCell({
     <td className="relative whitespace-nowrap px-3 py-3 text-right tabular-nums">
       {value !== null && max && max > 0 && (
         <div
-          className="absolute inset-y-1.5 right-1.5 rounded bg-purple-100/60"
+          className="absolute inset-y-1.5 right-1.5 rounded bg-brand-100/60"
           style={{ width: `${width}%` }}
           aria-hidden
         />

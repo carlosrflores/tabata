@@ -178,7 +178,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
       <ol className="space-y-4">
         {/* Step 1 */}
         <li className="rounded-2xl border border-gray-100 bg-white p-5">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-purple-500">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-500">
             Step 1
           </div>
           <p className="text-sm text-gray-700">
@@ -187,7 +187,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
               href="https://members.onepeloton.com"
               target="_blank"
               rel="noreferrer"
-              className="font-medium text-purple-600 underline hover:text-purple-700"
+              className="font-medium text-brand-600 underline hover:text-brand-700"
             >
               members.onepeloton.com
             </a>{' '}
@@ -197,7 +197,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
 
         {/* Step 2 */}
         <li className="rounded-2xl border border-gray-100 bg-white p-5">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-purple-500">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-500">
             Step 2
           </div>
           <p className="text-sm text-gray-700">
@@ -214,7 +214,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
             <button
               type="button"
               onClick={handleCopySnippet}
-              className="press absolute right-2 top-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 shadow-sm transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
+              className="press absolute right-2 top-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
@@ -223,7 +223,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
 
         {/* Step 3 */}
         <li className="rounded-2xl border border-gray-100 bg-white p-5">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-purple-500">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-500">
             Step 3
           </div>
           <p className="mb-3 text-sm text-gray-700">
@@ -237,7 +237,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-purple-200"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-brand-200"
           />
           {parseError && (
             <p className="mt-1 text-xs text-red-600">{parseError}</p>
@@ -260,7 +260,7 @@ export default function ConnectPage({ params }: { params: { code: string } }) {
         type="button"
         onClick={handleSubmit}
         disabled={!parsedOk || submitting}
-        className="press mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-3 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-50"
+        className="press mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 px-4 py-3 text-sm font-medium text-white shadow transition-shadow hover:shadow-md disabled:opacity-50"
       >
         {submitting && <Spinner />}
         {submitting ? 'Connecting…' : 'Connect my Peloton'}

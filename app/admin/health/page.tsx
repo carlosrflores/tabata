@@ -147,7 +147,7 @@ export default function HealthPage() {
         <button
           onClick={triggerSync}
           disabled={syncing}
-          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 disabled:opacity-50"
+          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 disabled:opacity-50"
         >
           {syncing && <Spinner />}
           {syncing ? 'Queuing…' : 'Sync all members'}

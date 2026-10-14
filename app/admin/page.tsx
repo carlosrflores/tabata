@@ -305,7 +305,7 @@ export default function AdminPage() {
         <button
           onClick={() => triggerSync()}
           disabled={syncBusy !== null}
-          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 disabled:opacity-50"
+          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 disabled:opacity-50"
         >
           {syncBusy === 'all' && <Spinner />}
           Sync all members
@@ -325,14 +325,14 @@ export default function AdminPage() {
               className="link-row group flex items-start justify-between gap-3 px-5 py-3"
             >
               <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
+                <div className="text-sm font-medium text-gray-900 group-hover:text-brand-700">
                   Peloton token bootstrap
                 </div>
                 <div className="text-xs text-gray-400">
                   Store the owner&apos;s Auth0 bundle and enable auto-refresh.
                 </div>
               </div>
-              <span aria-hidden className="text-gray-300 group-hover:text-purple-500">
+              <span aria-hidden className="text-gray-300 group-hover:text-brand-500">
                 →
               </span>
             </Link>
@@ -343,14 +343,14 @@ export default function AdminPage() {
               className="link-row group flex items-start justify-between gap-3 px-5 py-3"
             >
               <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900 group-hover:text-purple-700">
+                <div className="text-sm font-medium text-gray-900 group-hover:text-brand-700">
                   Sync health &amp; history
                 </div>
                 <div className="text-xs text-gray-400">
                   Last 30 sync runs plus token expiry warnings.
                 </div>
               </div>
-              <span aria-hidden className="text-gray-300 group-hover:text-purple-500">
+              <span aria-hidden className="text-gray-300 group-hover:text-brand-500">
                 →
               </span>
             </Link>
@@ -407,14 +407,14 @@ export default function AdminPage() {
             value={userForm.email}
             onChange={(e) => setUserForm((f) => ({ ...f, email: e.target.value }))}
             placeholder="email@example.com"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
           />
           <select
             value={userForm.role}
             onChange={(e) =>
               setUserForm((f) => ({ ...f, role: e.target.value as 'admin' | 'picker' }))
             }
-            className="border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 bg-white"
+            className="border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200 bg-white"
           >
             <option value="picker">picker</option>
             <option value="admin">admin</option>
@@ -422,7 +422,7 @@ export default function AdminPage() {
           <button
             type="submit"
             disabled={userBusy || !userForm.email.trim()}
-            className="press inline-flex items-center gap-2 bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
+            className="press inline-flex items-center gap-2 bg-brand-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors flex-shrink-0"
           >
             {userBusy && <Spinner />}
             {userBusy ? 'Adding…' : 'Add'}
@@ -461,12 +461,12 @@ export default function AdminPage() {
             value={tabataUrl}
             onChange={(e) => setTabataUrl(e.target.value)}
             placeholder="https://members.onepeloton.com/scheduled/class/…"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-brand-200"
           />
           <button
             type="submit"
             disabled={tabataBusy || !tabataUrl.trim()}
-            className="press inline-flex items-center gap-2 bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors flex-shrink-0"
+            className="press inline-flex items-center gap-2 bg-brand-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors flex-shrink-0"
           >
             {tabataBusy && <Spinner />}
             {tabataBusy ? 'Saving…' : 'Set class'}
@@ -506,7 +506,7 @@ export default function AdminPage() {
                     value={form.name}
                     onChange={(e) => handleNameChange(e.target.value)}
                     placeholder="Your name"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                   />
                 </div>
                 <div className="w-20">
@@ -517,7 +517,7 @@ export default function AdminPage() {
                     value={form.initials}
                     onChange={(e) => setForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))}
                     placeholder="CF"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 font-mono"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200 font-mono"
                   />
                 </div>
               </div>
@@ -528,7 +528,7 @@ export default function AdminPage() {
                   value={form.peloton_username}
                   onChange={(e) => setForm((f) => ({ ...f, peloton_username: e.target.value.trim() }))}
                   placeholder="your.username"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                 />
               </div>
               <div>
@@ -539,10 +539,10 @@ export default function AdminPage() {
                   value={form.peloton_bearer_token}
                   onChange={(e) => setForm((f) => ({ ...f, peloton_bearer_token: e.target.value }))}
                   placeholder="eyJhbGciOi..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-brand-200"
                 />
                 <details className="mt-2">
-                  <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
+                  <summary className="text-xs text-brand-500 cursor-pointer hover:text-brand-600">
                     How to get the bearer token
                   </summary>
                   <ol className="mt-2 text-xs text-gray-500 space-y-1 list-decimal list-inside">
@@ -582,7 +582,7 @@ export default function AdminPage() {
                     required
                     value={form.peloton_user_id}
                     onChange={(e) => handleFollowingSelect(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 bg-white"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200 bg-white"
                   >
                     <option value="">— Select a rider —</option>
                     {following.map((u) => (
@@ -603,7 +603,7 @@ export default function AdminPage() {
                       value={form.name}
                       onChange={(e) => handleNameChange(e.target.value)}
                       placeholder="Full name"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                     />
                   </div>
                   <div className="w-20">
@@ -614,7 +614,7 @@ export default function AdminPage() {
                       value={form.initials}
                       onChange={(e) => setForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))}
                       placeholder="XX"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200 font-mono"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200 font-mono"
                     />
                   </div>
                 </div>
@@ -625,7 +625,7 @@ export default function AdminPage() {
           <button
             type="submit"
             disabled={submitting || (!isOwnerSetup && !form.peloton_user_id)}
-            className="press inline-flex w-full items-center justify-center gap-2 bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
+            className="press inline-flex w-full items-center justify-center gap-2 bg-brand-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
             {submitting && <Spinner />}
             {submitting ? (isOwnerSetup ? 'Verifying token…' : 'Adding member…') : 'Add member'}
@@ -652,14 +652,14 @@ export default function AdminPage() {
         ) : (
           members.map((member) => (
             <div key={member.id} className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-0">
-              <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-medium flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center text-xs font-medium flex-shrink-0">
                 {member.initials}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-medium text-gray-800">{member.name}</span>
                   {member.is_owner && (
-                    <span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full">owner</span>
+                    <span className="text-xs bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full">owner</span>
                   )}
                 </div>
                 <div className="text-xs text-gray-400">
@@ -677,7 +677,7 @@ export default function AdminPage() {
               </div>
               <div className="flex flex-shrink-0 items-center gap-3">
                 {linkStatus[member.id] && (
-                  <span className="text-xs text-purple-500">
+                  <span className="text-xs text-brand-500">
                     {linkStatus[member.id]}
                   </span>
                 )}

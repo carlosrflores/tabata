@@ -53,8 +53,8 @@ export default function SetWeekBox({ hasCurrent }: { hasCurrent: boolean }) {
   }
 
   return (
-    <div className="mb-4 rounded-2xl border border-purple-100 bg-purple-50/50 p-4">
-      <div className="mb-2 text-xs font-medium text-purple-700">
+    <div className="mb-4 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+      <div className="mb-2 text-xs font-medium text-brand-700">
         Set {hasCurrent ? 'a different' : 'this week&apos;s'} class
       </div>
       {msg && (
@@ -75,12 +75,12 @@ export default function SetWeekBox({ hasCurrent }: { hasCurrent: boolean }) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Paste the scheduled-class share link…"
-          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
         />
         <button
           type="submit"
           disabled={busy || !url.trim()}
-          className="press inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-purple-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50"
+          className="press inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
         >
           {busy && <Spinner />}
           {busy ? 'Saving…' : 'Set'}

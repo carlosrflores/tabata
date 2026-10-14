@@ -26,19 +26,21 @@ export default function SiteNav() {
           href="/"
           className="flex items-center gap-2 text-sm font-semibold text-gray-900"
         >
-          <span
-            className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 text-white shadow-sm"
-            aria-hidden
-          >
-            {/* Bars at rest; a spinner while a page is loading (html.is-navigating). */}
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="[.is-navigating_&]:hidden">
-              <rect x="1" y="6" width="3" height="7" rx="1" fill="currentColor" opacity="0.85" />
-              <rect x="5.5" y="3" width="3" height="10" rx="1" fill="currentColor" />
-              <rect x="10" y="0.5" width="3" height="12.5" rx="1" fill="currentColor" opacity="0.7" />
-            </svg>
-            <Spinner className="hidden h-3.5 w-3.5 [.is-navigating_&]:block" />
+          <span className="grid h-8 w-8 place-items-center" aria-hidden>
+            {/* Logo at rest; a spinner while a page is loading (html.is-navigating). */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-mark.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 [.is-navigating_&]:hidden"
+            />
+            <Spinner className="hidden h-4 w-4 text-brand-500 [.is-navigating_&]:block" />
           </span>
-          <span className="hidden sm:inline">Tabata Tuesday</span>
+          <span className="hidden tracking-wide sm:inline">
+            TABATA <span className="text-brand-600">TUESDAY</span>
+          </span>
         </Link>
 
         <nav className="flex items-center gap-1 text-sm">
@@ -52,7 +54,7 @@ export default function SiteNav() {
                 className={
                   'press rounded-full px-3 py-1.5 transition-colors ' +
                   (active
-                    ? 'bg-purple-50 text-purple-700'
+                    ? 'bg-brand-50 text-brand-700'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900')
                 }
               >

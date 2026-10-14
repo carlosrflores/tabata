@@ -134,7 +134,7 @@ export default function PelotonBootstrapPage() {
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-purple-200"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-brand-200"
           />
           {bundleError ? (
             <p className="mt-1 text-xs text-red-600">{bundleError}</p>
@@ -155,7 +155,7 @@ export default function PelotonBootstrapPage() {
             value={accessToken}
             onChange={(e) => setAccessToken(e.target.value)}
             placeholder="eyJhbGciOi…"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-brand-200"
           />
         </div>
 
@@ -166,7 +166,7 @@ export default function PelotonBootstrapPage() {
             value={refreshToken}
             onChange={(e) => setRefreshToken(e.target.value)}
             placeholder="v1.M…"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-brand-200"
           />
           <p className="mt-1 text-xs text-gray-400">
             Optional, but without it the access token can&apos;t auto-refresh.
@@ -180,7 +180,7 @@ export default function PelotonBootstrapPage() {
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             placeholder="abc123…"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-200"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-brand-200"
           />
           <p className="mt-1 text-xs text-gray-400">
             Required together with the refresh token to enable auto-refresh.
@@ -188,7 +188,7 @@ export default function PelotonBootstrapPage() {
         </div>
 
         <details>
-          <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600">
+          <summary className="text-xs text-brand-500 cursor-pointer hover:text-brand-600">
             How to capture all three from members.onepeloton.com
           </summary>
           <div className="mt-2 space-y-3">
@@ -240,7 +240,7 @@ export default function PelotonBootstrapPage() {
         <button
           type="submit"
           disabled={submitting || !accessToken.trim()}
-          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 disabled:opacity-50"
+          className="press inline-flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-4 py-2 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 disabled:opacity-50"
         >
           {submitting && <Spinner />}
           {submitting ? 'Validating…' : 'Bootstrap'}

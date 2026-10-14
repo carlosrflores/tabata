@@ -65,7 +65,7 @@ export default function NavigationProgress() {
     >
       <div
         className={
-          'h-full bg-gradient-to-r from-purple-400 to-purple-600 shadow-[0_0_8px_rgb(147_51_234/0.6)] ' +
+          'h-full bg-gradient-to-r from-brand-400 to-brand-600 shadow-[0_0_8px_rgb(147_51_234/0.6)] ' +
           (state === 'loading'
             ? 'w-[85%] opacity-100 transition-[width] duration-[8000ms] ease-out'
             : state === 'done'
