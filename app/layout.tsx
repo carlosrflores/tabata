@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Suspense } from 'react'
 import SiteNav from './components/SiteNav'
@@ -7,6 +7,11 @@ import NavigationProgress from './components/NavigationProgress'
 export const metadata: Metadata = {
   title: 'Tabata Tuesday',
   description: 'Group Peloton leaderboard for Tabata Tuesday',
+}
+
+export const viewport: Viewport = {
+  // Matches the logo's black field (browser chrome on mobile).
+  themeColor: '#0a0a0a',
 }
 
 export default function RootLayout({

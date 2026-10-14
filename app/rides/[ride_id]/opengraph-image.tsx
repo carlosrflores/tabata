@@ -96,7 +96,7 @@ export default async function RideOgImage({
           display: 'flex',
           position: 'relative',
           background:
-            'linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 50%, #0a0a0a 100%)',
+            'linear-gradient(135deg, #2e0b0d 0%, #4e1b1e 50%, #0a0a0a 100%)',
           color: 'white',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
@@ -163,7 +163,7 @@ export default async function RideOgImage({
                 fontSize: 22,
                 fontWeight: 600,
                 letterSpacing: 4,
-                color: '#c4a4ff',
+                color: '#ff9aa0',
               }}
             >
               TABATA TUESDAY

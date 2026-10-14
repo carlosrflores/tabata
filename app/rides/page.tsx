@@ -77,14 +77,14 @@ export default async function RidesIndexPage() {
                     className="h-20 w-28 flex-shrink-0 rounded-xl object-cover ring-1 ring-black/5"
                   />
                 ) : (
-                  <div className="grid h-20 w-28 flex-shrink-0 place-items-center rounded-xl bg-gradient-to-br from-purple-100 to-purple-50">
-                    <span className="text-xs font-medium text-purple-400">
+                  <div className="grid h-20 w-28 flex-shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-100 to-brand-50">
+                    <span className="text-xs font-medium text-brand-400">
                       No image
                     </span>
                   </div>
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <h3 className="line-clamp-2 text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
+                  <h3 className="line-clamp-2 text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-brand-700 group-hover:underline">
                     {r.title ?? 'Untitled ride'}
                   </h3>
                   <p className="mt-0.5 truncate text-xs text-gray-500">
@@ -92,7 +92,7 @@ export default async function RidesIndexPage() {
                     {formatDuration(r.duration_seconds)}
                   </p>
                   <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 text-xs">
-                    <span className="rounded-full bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
                       {r.group_member_count}{' '}
                       {r.group_member_count === 1 ? 'member' : 'members'}
                     </span>

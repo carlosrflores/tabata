@@ -20,19 +20,19 @@ interface LeaderboardData {
 }
 
 const RANK_RING: Record<number, string> = {
-  1: 'ring-purple-300 bg-purple-100 text-purple-800',
+  1: 'ring-brand-300 bg-brand-100 text-brand-800',
   2: 'ring-gray-300 bg-gray-100 text-gray-700',
   3: 'ring-amber-300 bg-amber-100 text-amber-800',
 }
 
 const RANK_RING_COLOR: Record<number, string> = {
-  1: 'ring-purple-300',
+  1: 'ring-brand-300',
   2: 'ring-gray-300',
   3: 'ring-amber-300',
 }
 
 const RANK_TEXT: Record<number, string> = {
-  1: 'text-purple-600',
+  1: 'text-brand-600',
   2: 'text-gray-500',
   3: 'text-amber-600',
 }
@@ -89,7 +89,7 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
   }) {
     const heights = { 1: 'h-24', 2: 'h-16', 3: 'h-10' }[rank]
     const block = {
-      1: 'bg-gradient-to-t from-purple-500 to-purple-300',
+      1: 'bg-gradient-to-t from-brand-500 to-brand-300',
       2: 'bg-gradient-to-t from-gray-400 to-gray-300',
       3: 'bg-gradient-to-t from-amber-500 to-amber-300',
     }[rank]
@@ -101,7 +101,7 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
         </span>
         <Link
           href={`/member/${entry.member_id}`}
-          className="group flex flex-col items-center rounded-xl px-2 py-1 transition-all duration-150 hover:-translate-y-0.5 hover:bg-purple-50/70 active:scale-[0.97]"
+          className="group flex flex-col items-center rounded-xl px-2 py-1 transition-all duration-150 hover:-translate-y-0.5 hover:bg-brand-50/70 active:scale-[0.97]"
         >
           <Avatar
             initials={entry.initials}
@@ -109,7 +109,7 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
             size={rank === 1 ? 'lg' : 'md'}
             imageUrl={entry.image_url}
           />
-          <div className="mt-1.5 text-center text-xs font-medium text-gray-800 leading-tight underline-offset-2 group-hover:text-purple-700 group-hover:underline">
+          <div className="mt-1.5 text-center text-xs font-medium text-gray-800 leading-tight underline-offset-2 group-hover:text-brand-700 group-hover:underline">
             {entry.name.split(' ')[0]}
           </div>
           <div className="text-[11px] text-gray-400">
@@ -280,14 +280,14 @@ export default function LeaderboardClient({
             onClick={() => setWeekOffset((o) => Math.min(MAX_WEEKS_BACK, o + 1))}
             disabled={loading || weekOffset >= MAX_WEEKS_BACK}
             aria-label="Previous week"
-            className="press grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-500"
+            className="press grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-500"
           >
             <ChevronLeft />
           </button>
           <span className="inline-flex min-w-[8rem] items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-center text-xs text-gray-500">
             {loading ? (
               <>
-                <Spinner className="h-3 w-3 text-purple-500" />
+                <Spinner className="h-3 w-3 text-brand-500" />
                 Loading…
               </>
             ) : (
@@ -299,7 +299,7 @@ export default function LeaderboardClient({
             onClick={() => setWeekOffset((o) => Math.max(0, o - 1))}
             disabled={loading || weekOffset === 0}
             aria-label="Next week"
-            className="press grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-500"
+            className="press grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-500"
           >
             <ChevronRight />
           </button>
@@ -378,7 +378,7 @@ export default function LeaderboardClient({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
+                      <span className="truncate text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-brand-700 group-hover:underline">
                         {entry.name}
                       </span>
                       {isYou && (
@@ -416,7 +416,7 @@ export default function LeaderboardClient({
         {!showAll && leaderboard.length > 5 && (
           <button
             onClick={() => setShowAll(true)}
-            className="block w-full border-t border-gray-50 py-2.5 text-xs font-medium text-gray-500 transition-colors hover:bg-purple-50/70 hover:text-purple-700 active:bg-purple-100/70"
+            className="block w-full border-t border-gray-50 py-2.5 text-xs font-medium text-gray-500 transition-colors hover:bg-brand-50/70 hover:text-brand-700 active:bg-brand-100/70"
           >
             Show {leaderboard.length - 5} more members
           </button>
@@ -436,7 +436,7 @@ export default function LeaderboardClient({
                 href={`/member/${entry.member_id}`}
                 className="ring-card link-card group rounded-2xl border border-gray-100 bg-white p-3"
               >
-                <p className="mb-2 truncate text-xs text-gray-500 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
+                <p className="mb-2 truncate text-xs text-gray-500 underline-offset-2 group-hover:text-brand-700 group-hover:underline">
                   {entry.name}
                 </p>
                 <StreakDots weeks={entry.streak_weeks} />

@@ -118,15 +118,15 @@ export default async function RideDetailPage({ params }: Props) {
               className="h-40 w-full flex-shrink-0 rounded-2xl object-cover ring-1 ring-black/5 sm:h-32 sm:w-52"
             />
           ) : (
-            <div className="grid h-40 w-full flex-shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-purple-100 to-purple-50 sm:h-32 sm:w-52">
-              <span className="text-xs font-medium text-purple-400">
+            <div className="grid h-40 w-full flex-shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-100 to-brand-50 sm:h-32 sm:w-52">
+              <span className="text-xs font-medium text-brand-400">
                 No image
               </span>
             </div>
           )}
 
           <div className="min-w-0 flex-1 pr-12">
-            <div className="text-xs font-medium uppercase tracking-wider text-purple-600">
+            <div className="text-xs font-medium uppercase tracking-wider text-brand-600">
               {ride.fitness_discipline ?? 'Workout'} ·{' '}
               {formatDuration(ride.duration_seconds)}
             </div>
@@ -144,7 +144,7 @@ export default async function RideDetailPage({ params }: Props) {
                     className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow"
                   />
                 ) : (
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-purple-100 text-sm font-medium text-purple-700 ring-2 ring-white shadow">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-brand-100 text-sm font-medium text-brand-700 ring-2 ring-white shadow">
                     {ride.instructor_name
                       .split(' ')
                       .map((p) => p[0])
@@ -195,7 +195,7 @@ export default async function RideDetailPage({ params }: Props) {
               href={pelotonClassUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="press mt-4 inline-flex items-center gap-1.5 rounded-full bg-purple-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-all hover:bg-purple-700 hover:shadow-md"
+              className="press mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-all hover:bg-brand-700 hover:shadow-md"
             >
               Open in Peloton
               <ExternalLinkIcon />
@@ -227,7 +227,7 @@ export default async function RideDetailPage({ params }: Props) {
         <div className="ring-card rounded-3xl border border-gray-100 bg-white px-5 py-16 text-center">
           <p className="text-sm text-gray-400">
             No one in the group has taken this ride yet.{' '}
-            <span className="font-medium text-purple-600">Be the first!</span>
+            <span className="font-medium text-brand-600">Be the first!</span>
           </p>
         </div>
       ) : (
@@ -256,7 +256,7 @@ export default async function RideDetailPage({ params }: Props) {
                 key={m.id}
                 className="flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5 ring-1 ring-gray-100"
               >
-                <div className="grid h-5 w-5 place-items-center rounded-full bg-purple-100 text-[10px] font-medium text-purple-700">
+                <div className="grid h-5 w-5 place-items-center rounded-full bg-brand-100 text-[10px] font-medium text-brand-700">
                   {m.initials}
                 </div>
                 <span className="text-xs text-gray-700">{m.name}</span>

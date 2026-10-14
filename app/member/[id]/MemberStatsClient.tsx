@@ -48,7 +48,7 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
             className="h-14 w-14 flex-shrink-0 rounded-full object-cover shadow ring-4 ring-white"
           />
         ) : (
-          <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-base font-semibold text-white shadow ring-4 ring-white">
+          <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-base font-semibold text-white shadow ring-4 ring-white">
             {member.initials}
           </div>
         )}
@@ -135,7 +135,7 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
                 const RowInner = (
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-purple-700 group-hover:underline">
+                      <div className="truncate text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-brand-700 group-hover:underline">
                         {w.title}
                       </div>
                       <div className="mt-0.5 text-xs text-gray-500">
@@ -200,7 +200,7 @@ export default function MemberStatsClient({ data }: { data: MemberData }) {
                   key={pr.duration_minutes}
                   className="flex items-center border-b border-gray-50 px-5 py-3 last:border-0"
                 >
-                  <div className="w-12 text-sm font-semibold text-purple-600">
+                  <div className="w-12 text-sm font-semibold text-brand-600">
                     {pr.duration_minutes}m
                   </div>
                   <div className="min-w-0 flex-1">

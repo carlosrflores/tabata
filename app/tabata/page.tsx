@@ -93,7 +93,7 @@ function Avatar({ name, initials, image_url }: { name: string; initials: string;
       className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
     />
   ) : (
-    <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-purple-100 text-xs font-medium text-purple-800">
+    <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-medium text-brand-800">
       {initials}
     </div>
   )
@@ -114,11 +114,11 @@ function ClassCard({ week }: { week: Week }) {
         />
       )}
       <div className="p-5">
-        <div className="text-xs font-semibold uppercase tracking-wide text-purple-500">
+        <div className="text-xs font-semibold uppercase tracking-wide text-brand-500">
           This week&apos;s class
         </div>
         <h2 className="mt-1 text-lg font-semibold text-gray-900">
-          <Link href={`/rides/${ride.id}`} className="link-text decoration-purple-200">
+          <Link href={`/rides/${ride.id}`} className="link-text decoration-brand-200">
             {ride.title ?? 'Untitled class'}
           </Link>
         </h2>
@@ -272,7 +272,7 @@ export default async function TabataPage() {
                         {week.ride ? (
                           <Link
                             href={`/rides/${week.ride.id}`}
-                            className="link-text decoration-purple-200"
+                            className="link-text decoration-brand-200"
                           >
                             {week.ride.title ?? 'Untitled class'}
                           </Link>

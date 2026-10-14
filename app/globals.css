@@ -28,7 +28,7 @@
 
   /* Keyboard focus is always visible. */
   :focus-visible {
-    outline: 2px solid theme('colors.purple.500');
+    outline: 2px solid theme('colors.brand.500');
     outline-offset: 2px;
   }
 
@@ -52,22 +52,22 @@
 @layer components {
   /* Inline text link: underlined at rest, stronger on hover. */
   .link-text {
-    @apply text-purple-700 underline decoration-purple-300 decoration-1 underline-offset-2 transition-colors hover:text-purple-900 hover:decoration-purple-600 hover:decoration-2;
+    @apply text-brand-700 underline decoration-brand-300 decoration-1 underline-offset-2 transition-colors hover:text-brand-900 hover:decoration-brand-600 hover:decoration-2;
   }
 
   /* Small secondary text action ("remove", "refresh", "sync"…). */
   .link-subtle {
-    @apply text-gray-500 underline-offset-2 transition-colors hover:text-purple-600 hover:underline;
+    @apply text-gray-500 underline-offset-2 transition-colors hover:text-brand-600 hover:underline;
   }
 
-  /* Whole-card link: lifts and gains a purple edge on hover, presses in on click. */
+  /* Whole-card link: lifts and gains a brand-red edge on hover, presses in on click. */
   .link-card {
-    @apply transition-all duration-150 hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-md active:translate-y-0 active:scale-[0.99];
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md active:translate-y-0 active:scale-[0.99];
   }
 
   /* Whole-row link inside a list: tints on hover, darker while pressed. */
   .link-row {
-    @apply transition-colors hover:bg-purple-50/70 active:bg-purple-100/70;
+    @apply transition-colors hover:bg-brand-50/70 active:bg-brand-100/70;
   }
 
   /* Tactile press for buttons (instant scale; pairs with any transition-* utility). */
