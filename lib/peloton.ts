@@ -299,6 +299,19 @@ export function extractSummaryMetric(
   return metric?.value ?? null
 }
 
+// Helper: extract a named metric from the max_summaries array (Max Output,
+// Max Cadence, Max Resistance, Max Speed, Max Heart Rate). Peloton omits
+// `max_summaries` for workouts without pedaling metrics; returns null then.
+export function extractMaxMetric(
+  perf: PelotonWorkoutPerformance,
+  name: string
+): number | null {
+  const metric = perf.max_summaries?.find(
+    (s) => s.display_name.toLowerCase() === name.toLowerCase()
+  )
+  return metric?.value ?? null
+}
+
 // Fetch full metadata for a single ride (class).
 // Used by the sync job to populate the `rides` table.
 //
