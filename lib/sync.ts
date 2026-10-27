@@ -8,6 +8,7 @@ import {
   fetchPelotonUserImage,
   extractAvgMetric,
   extractSummaryMetric,
+  extractMaxMetric,
   refreshPelotonToken,
   PERFORMANCE_GRAPH_DISCIPLINES,
 } from '@/lib/peloton'
@@ -122,6 +123,20 @@ export function transformRide(ride: PelotonRide, fallbackInstructorName?: string
       : null,
     has_pedaling_metrics: ride.has_pedaling_metrics ?? false,
     is_explicit: ride.is_explicit ?? false,
+    class_type_ids: ride.class_type_ids ?? null,
+    instructor_id: ride.instructor?.id ?? ride.instructor_id ?? null,
+    series_id: ride.series_id ?? null,
+    ride_type_id: ride.ride_type_id ?? null,
+    studio_location: ride.location ?? null,
+    origin_locale: ride.origin_locale ?? null,
+    language: ride.language ?? null,
+    length_seconds: ride.length ?? null,
+    pedaling_duration_seconds: ride.pedaling_duration ?? null,
+    pedaling_start_offset: ride.pedaling_start_offset ?? null,
+    pedaling_end_offset: ride.pedaling_end_offset ?? null,
+    metrics_available: ride.metrics ?? null,
+    muscle_group_score: ride.muscle_group_score ?? null,
+    difficulty_level: ride.difficulty_level ?? null,
     raw_data: ride,
     updated_at: new Date().toISOString(),
   }
@@ -216,6 +231,18 @@ function transformWorkout(
   const rideId = summary.ride?.id
   const safeRideId = rideId && safeRideIds.has(rideId) ? rideId : null
 
+  // FTP of 0 means "not configured" on freestyle sessions; store null.
+  const ftpWatts =
+    summary.ftp_info?.ftp && summary.ftp_info.ftp > 0 ? summary.ftp_info.ftp : null
+
+  // Heart rate zone durations is often present-as-key but JSON-null for riders
+  // without a HR monitor. Store only when it's an actual object.
+  const hrZones =
+    summary.total_heart_rate_zone_durations &&
+    typeof summary.total_heart_rate_zone_durations === 'object'
+      ? summary.total_heart_rate_zone_durations
+      : null
+
   return {
     member_id: memberId,
     peloton_workout_id: summary.id,
@@ -236,6 +263,29 @@ function transformWorkout(
     difficulty_rating: summary.ride?.difficulty_rating_avg ?? null,
     ride_id: safeRideId,
     is_personal_record: summary.is_total_work_personal_record ?? false,
+    end_time: summary.end_time
+      ? new Date(summary.end_time * 1000).toISOString()
+      : null,
+    platform: summary.platform ?? null,
+    device_type: summary.device_type ?? null,
+    timezone: summary.timezone ?? null,
+    workout_type: summary.workout_type ?? null,
+    is_outdoor: summary.is_outdoor ?? null,
+    has_paused: summary.has_paused ?? null,
+    ftp_watts: ftpWatts,
+    ftp_source: summary.ftp_info?.ftp_source ?? null,
+    strive_score: summary.average_effort_score ?? null,
+    heart_rate_zone_durations: hrZones,
+    // Max and HR metrics come from the performance graph. Peloton returns
+    // "Avg Heart Rate" alongside the other avgs when a monitor was paired.
+    avg_heart_rate: extractAvgMetric(perf, 'Avg Heart Rate'),
+    max_heart_rate: extractMaxMetric(perf, 'Max Heart Rate'),
+    max_watts: extractMaxMetric(perf, 'Max Output'),
+    max_cadence: extractMaxMetric(perf, 'Max Cadence'),
+    max_resistance: extractMaxMetric(perf, 'Max Resistance'),
+    max_speed: extractMaxMetric(perf, 'Max Speed'),
+    perceived_effort_rating: summary.ratings?.perceived_effort_rating ?? null,
+    achievements: summary.achievement_templates ?? null,
     raw_data: summary,
   }
 }

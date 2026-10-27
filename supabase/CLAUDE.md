@@ -12,5 +12,6 @@ Migrations are **plain SQL files applied manually in the Supabase SQL editor** �
 8. `member_connect_codes_migration.sql` — per-member self-serve token bootstrap codes (see `docs/member-connect.md`)
 9. `tabata_weeks_migration.sql` — the weekly Tabata Tuesday class pick, feeds `/tabata`
 10. `app_users_migration.sql` — magic-link sign-in allowlist + roles (see `docs/auth.md`)
+11. `extended_metrics_migration.sql` — typed columns for extra Peloton fields on `workouts` + `rides` (class_type_ids, FTP, HR zones, max metrics, muscle_group_score, etc.) with backfill from `raw_data`
 
 When adding schema changes, write a new dated migration file under `supabase/` rather than mutating an existing one — and keep it idempotent so it can be re-run safely.
